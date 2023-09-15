@@ -1,7 +1,7 @@
 use std::{io::Write, str::FromStr};
 
 use crate::schema::{roles, user_roles, users};
-use chrono::NaiveDateTime;
+use chrono::{NaiveDate, NaiveDateTime};
 use diesel::{
     deserialize::{FromSql, FromSqlRow},
     expression::AsExpression,
@@ -23,7 +23,8 @@ pub struct User {
     pub first_name: Option<String>,
     pub last_name: Option<String>,
     pub country: Option<String>,
-    pub birth_date: Option<String>,
+    pub birth_date: Option<NaiveDate>,
+    pub created_at: NaiveDateTime,
 }
 
 #[derive(Insertable)]
