@@ -1379,6 +1379,7 @@ dependencies = [
  "chrono",
  "clap",
  "diesel",
+ "log",
  "rand",
  "rocket",
  "rocket_db_pools",
