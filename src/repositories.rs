@@ -62,15 +62,15 @@ impl UserRepository {
         Ok(users.into_iter().zip(user_roles).collect())
     }
 
-    pub fn find_by_username(connection: &mut PgConnection, username: &String) -> QueryResult<User> {
+    pub fn find_by_email(connection: &mut PgConnection, email: &String) -> QueryResult<User> {
         users::table
-            .filter(users::username.eq(username))
+            .filter(users::email.eq(email))
             .first(connection)
     }
 
     pub fn delete(connection: &mut PgConnection, id: i32) -> QueryResult<usize> {
         diesel::delete(user_roles::table.filter(user_roles::user_id.eq(id))).execute(connection)?;
-        diesel::delete(roles::table.find(id)).execute(connection)
+        diesel::delete(users::table.find(id)).execute(connection)
     }
 }
 

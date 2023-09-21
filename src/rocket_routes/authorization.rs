@@ -20,10 +20,10 @@ pub async fn login(
     db: DbConnection,
     cache: Connection<CacheConnection>,
 ) -> Result<Value, Custom<Value>> {
-    let username = credentials.username.clone();
+    let email = credentials.email.clone();
     let user = db
         .run(move |connection| {
-            UserRepository::find_by_username(connection, &username).map_err(|e| match e {
+            UserRepository::find_by_email(connection, &email).map_err(|e| match e {
                 diesel::result::Error::NotFound => {
                     Custom(Status::Unauthorized, json!(CREDENTIALS_ERROR))
                 }
