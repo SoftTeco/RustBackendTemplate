@@ -11,7 +11,7 @@ pub const SESSION_ID_LENGTH: usize = 128;
 
 #[derive(serde::Deserialize)]
 pub struct Credentials {
-    pub username: String,
+    pub email: String,
     pub password: String,
 }
 
