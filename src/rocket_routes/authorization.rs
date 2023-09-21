@@ -40,3 +40,8 @@ pub async fn login(
         .map(|_| json!({ "token": session_id }))
         .map_err(|e| server_error(e.into()))
 }
+
+#[rocket::get("/me")]
+pub fn me(user: User) -> Value {
+    json!(user)
+}

@@ -9,6 +9,7 @@ async fn main() {
             "/",
             rocket::routes![
                 rust_template::rocket_routes::authorization::login,
+                rust_template::rocket_routes::authorization::me,
             ],
         )
         .attach(rust_template::rocket_routes::DbConnection::fairing())
