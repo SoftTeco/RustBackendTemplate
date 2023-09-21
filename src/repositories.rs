@@ -1,7 +1,10 @@
-use diesel::{prelude::*, RunQueryDsl};
-
+use crate::auth::SESSION_LIFE_TIME;
 use crate::models::{NewRole, NewUser, NewUserRole, Role, RoleCode, User, UserRole};
+use crate::rocket_routes::CacheConnection;
 use crate::schema::{roles, user_roles, users};
+use diesel::{prelude::*, RunQueryDsl};
+use rocket_db_pools::deadpool_redis::redis::RedisError;
+use rocket_db_pools::{deadpool_redis::redis::AsyncCommands, Connection};
 
 pub struct UserRepository;
 
@@ -44,6 +47,10 @@ impl UserRepository {
         Ok(user)
     }
 
+    pub fn find(connection: &mut PgConnection, id: i32) -> QueryResult<User> {
+        users::table.find(id).get_result(connection)
+    }
+
     pub fn find_with_roles(
         connection: &mut PgConnection,
     ) -> QueryResult<Vec<(User, Vec<(UserRole, Role)>)>> {
@@ -53,6 +60,12 @@ impl UserRepository {
             .load::<(UserRole, Role)>(connection)?
             .grouped_by(&users);
         Ok(users.into_iter().zip(user_roles).collect())
+    }
+
+    pub fn find_by_username(connection: &mut PgConnection, username: &String) -> QueryResult<User> {
+        users::table
+            .filter(users::username.eq(username))
+            .first(connection)
     }
 
     pub fn delete(connection: &mut PgConnection, id: i32) -> QueryResult<usize> {
@@ -84,5 +97,23 @@ impl RoleRepository {
         let user_roles = UserRole::belonging_to(&user).get_results(connection)?;
         let role_ids = user_roles.iter().map(|ur: &UserRole| ur.role_id).collect();
         Self::find_by_ids(connection, role_ids)
+    }
+}
+
+pub struct SessionRepository;
+
+impl SessionRepository {
+    pub async fn cache_session_id(
+        session_id: &String,
+        user_id: i32,
+        mut cache: Connection<CacheConnection>,
+    ) -> Result<(), RedisError> {
+        cache
+            .set_ex::<_, _, ()>(
+                format!("sessions/{}", session_id),
+                user_id,
+                SESSION_LIFE_TIME,
+            )
+            .await
     }
 }
