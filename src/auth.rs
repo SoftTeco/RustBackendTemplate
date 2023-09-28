@@ -1,13 +1,16 @@
-use argon2::{
-    password_hash::{Error, SaltString},
-    PasswordHash, PasswordHasher, PasswordVerifier,
-};
+use argon2::password_hash::{Error, SaltString};
+use argon2::{PasswordHash, PasswordHasher, PasswordVerifier};
 use rand::{distributions::Alphanumeric, rngs::OsRng, Rng};
 
-use crate::models::User;
+use crate::{
+    errors::AuthError,
+    models::{NewUser, User},
+};
 
 pub const SESSION_LIFE_TIME: usize = 60 * 60 * 24;
 pub const SESSION_ID_LENGTH: usize = 128;
+const MIN_PASSWORD_LENGTH: usize = 6;
+const MIN_USERNAME_LENGTH: usize = 3;
 
 #[derive(serde::Deserialize)]
 pub struct Credentials {
@@ -34,4 +37,47 @@ pub fn authorize_user(user: &User, credentials: &Credentials) -> Result<String, 
         .collect();
 
     Ok(session_id)
+}
+
+pub fn validate_signup_credentials(credentials: &NewUser) -> Result<(), AuthError> {
+    if !is_username_valid(&credentials.username) {
+        return Err(AuthError::InvalidUsername);
+    }
+    if !is_email_valid(&credentials.email) {
+        return Err(AuthError::InvalidEmail);
+    }
+    if !is_password_valid(&credentials.password) {
+        return Err(AuthError::InvalidPassword);
+    }
+    Ok(())
+}
+
+pub fn is_username_valid(username: &str) -> bool {
+    username.len() >= MIN_USERNAME_LENGTH && username.chars().all(|c| c.is_ascii_alphanumeric())
+}
+
+pub fn is_password_valid(password: &str) -> bool {
+    password.len() >= MIN_PASSWORD_LENGTH
+        && password.chars().all(|c| c.is_ascii())
+        && password.chars().any(|c| c.is_ascii_uppercase())
+}
+
+pub fn is_email_valid(email: &str) -> bool {
+    if email.chars().any(|c| !c.is_ascii()) {
+        return false;
+    }
+    let parts: Vec<&str> = email.split('@').collect();
+    if parts.len() != 2 {
+        return false;
+    }
+    let domain_parts: Vec<&str> = parts[1].split('.').collect();
+    if domain_parts.len() < 2 {
+        return false;
+    }
+    for part in parts.iter().chain(domain_parts.iter()) {
+        if part.is_empty() {
+            return false;
+        }
+    }
+    true
 }
