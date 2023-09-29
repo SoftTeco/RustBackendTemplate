@@ -279,8 +279,16 @@ fn when_username_exist_then_signup_returns_username_unavailable_error() {
 
     let json: Value = response.json().unwrap();
     assert_eq!(
-        json.as_str().unwrap(),
-        AuthError::UnavailableUsername.value()
+        {
+            json.get("error_type").unwrap();
+            json.get("code").unwrap();
+            json.get("error_type").unwrap();
+        },
+        {
+            AuthError::UnavailableUsername.value().error_type;
+            AuthError::UnavailableUsername.value().code;
+            AuthError::UnavailableUsername.value().message;
+        }
     );
 }
 
@@ -303,7 +311,18 @@ fn when_inconsistent_username_then_signup_returns_invalid_username_error() {
         .unwrap();
 
     let json: Value = response.json().unwrap();
-    assert_eq!(json.as_str().unwrap(), AuthError::InvalidUsername.value());
+    assert_eq!(
+        {
+            json.get("error_type").unwrap();
+            json.get("code").unwrap();
+            json.get("error_type").unwrap();
+        },
+        {
+            AuthError::InvalidUsername.value().error_type;
+            AuthError::InvalidUsername.value().code;
+            AuthError::InvalidUsername.value().message;
+        }
+    );
 }
 
 #[test]
@@ -325,7 +344,18 @@ fn when_username_to_short_then_signup_returns_invalid_username_error() {
         .unwrap();
 
     let json: Value = response.json().unwrap();
-    assert_eq!(json.as_str().unwrap(), AuthError::InvalidUsername.value());
+    assert_eq!(
+        {
+            json.get("error_type").unwrap();
+            json.get("code").unwrap();
+            json.get("error_type").unwrap();
+        },
+        {
+            AuthError::InvalidUsername.value().error_type;
+            AuthError::InvalidUsername.value().code;
+            AuthError::InvalidUsername.value().message;
+        }
+    );
 }
 
 #[test]
@@ -353,7 +383,18 @@ fn when_email_exist_then_signup_returns_email_in_use_error() {
     delete_test_user(output);
 
     let json: Value = response.json().unwrap();
-    assert_eq!(json.as_str().unwrap(), AuthError::EmailInUse.value());
+    assert_eq!(
+        {
+            json.get("error_type").unwrap();
+            json.get("code").unwrap();
+            json.get("error_type").unwrap();
+        },
+        {
+            AuthError::EmailInUse.value().error_type;
+            AuthError::EmailInUse.value().code;
+            AuthError::EmailInUse.value().message;
+        }
+    );
 }
 
 #[test]
@@ -375,7 +416,18 @@ fn when_email_without_at_sign_then_signup_returns_email_invalid_error() {
         .unwrap();
 
     let json: Value = response.json().unwrap();
-    assert_eq!(json.as_str().unwrap(), AuthError::InvalidEmail.value());
+    assert_eq!(
+        {
+            json.get("error_type").unwrap();
+            json.get("code").unwrap();
+            json.get("error_type").unwrap();
+        },
+        {
+            AuthError::InvalidEmail.value().error_type;
+            AuthError::InvalidEmail.value().code;
+            AuthError::InvalidEmail.value().message;
+        }
+    );
 }
 
 #[test]
@@ -397,7 +449,18 @@ fn when_email_without_domain_then_signup_returns_email_invalid_error() {
         .unwrap();
 
     let json: Value = response.json().unwrap();
-    assert_eq!(json.as_str().unwrap(), AuthError::InvalidEmail.value());
+    assert_eq!(
+        {
+            json.get("error_type").unwrap();
+            json.get("code").unwrap();
+            json.get("error_type").unwrap();
+        },
+        {
+            AuthError::InvalidEmail.value().error_type;
+            AuthError::InvalidEmail.value().code;
+            AuthError::InvalidEmail.value().message;
+        }
+    );
 }
 
 #[test]
@@ -419,7 +482,18 @@ fn when_password_to_short_then_signup_returns_invalid_password_error() {
         .unwrap();
 
     let json: Value = response.json().unwrap();
-    assert_eq!(json.as_str().unwrap(), AuthError::InvalidPassword.value());
+    assert_eq!(
+        {
+            json.get("error_type").unwrap();
+            json.get("code").unwrap();
+            json.get("error_type").unwrap();
+        },
+        {
+            AuthError::InvalidPassword.value().error_type;
+            AuthError::InvalidPassword.value().code;
+            AuthError::InvalidPassword.value().message;
+        }
+    );
 }
 
 #[test]
@@ -441,5 +515,16 @@ fn when_inconsistent_password_then_signup_returns_invalid_password_error() {
         .unwrap();
 
     let json: Value = response.json().unwrap();
-    assert_eq!(json.as_str().unwrap(), AuthError::InvalidPassword.value());
+    assert_eq!(
+        {
+            json.get("error_type").unwrap();
+            json.get("code").unwrap();
+            json.get("error_type").unwrap();
+        },
+        {
+            AuthError::InvalidPassword.value().error_type;
+            AuthError::InvalidPassword.value().code;
+            AuthError::InvalidPassword.value().message;
+        }
+    );
 }
