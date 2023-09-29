@@ -28,7 +28,7 @@ impl UserRepository {
                 } else {
                     let name = role_code.to_string();
                     let new_role = NewRole {
-                        name: name,
+                        name,
                         code: role_code,
                     };
                     let role = RoleRepository::create(connection, new_role)?;
@@ -51,15 +51,24 @@ impl UserRepository {
         users::table.find(id).get_result(connection)
     }
 
-    pub fn find_with_roles(
-        connection: &mut PgConnection,
-    ) -> QueryResult<Vec<(User, Vec<(UserRole, Role)>)>> {
+    pub fn find_with_roles(connection: &mut PgConnection) -> QueryResult<Vec<(User, Vec<Role>)>> {
         let users = users::table.load(connection)?;
-        let user_roles = user_roles::table
+
+        let user_roles: Vec<Vec<(UserRole, Role)>> = user_roles::table
             .inner_join(roles::table)
             .load::<(UserRole, Role)>(connection)?
             .grouped_by(&users);
-        Ok(users.into_iter().zip(user_roles).collect())
+
+        let roles_by_users = user_roles
+            .into_iter()
+            .map(|user_roles: Vec<(UserRole, Role)>| {
+                user_roles
+                    .into_iter()
+                    .map(|(_user_role, role)| (role))
+                    .collect::<Vec<Role>>()
+            });
+
+        Ok(users.into_iter().zip(roles_by_users).collect())
     }
 
     pub fn find_by_email(connection: &mut PgConnection, email: &String) -> QueryResult<User> {
