@@ -45,6 +45,7 @@ fn main() {
         )
         .get_matches();
 
+    #[allow(clippy::single_match)]
     match matches.subcommand() {
         Some((CMD_USERS, sub_matches)) => match sub_matches.subcommand() {
             Some((CMD_CREATE, sub_matches)) => rust_template::commands::create_user(

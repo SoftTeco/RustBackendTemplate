@@ -25,7 +25,7 @@ pub fn create_user(username: String, email: String, password: String, role_codes
 
     let role_codes = role_codes
         .iter()
-        .map(|v| RoleCode::from_str(&v).unwrap())
+        .map(|v| RoleCode::from_str(v).unwrap())
         .collect();
 
     let user = UserRepository::create(&mut connection, new_user, role_codes).unwrap();
@@ -46,7 +46,7 @@ pub fn list_users() {
         println!("User: {:?}", user);
         println!("Roles:");
         for role in user.1.iter() {
-            println!("\t{:?}", role.1);
+            println!("\t{:?}", role);
         }
     }
 }

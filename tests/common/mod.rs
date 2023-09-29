@@ -21,6 +21,27 @@ pub fn create_test_user(username: &str, email: &str, password: &str, role: &str)
         .unwrap()
 }
 
+pub fn delete_test_user(create_output: Output) {
+    let create_stdout = String::from_utf8(create_output.stdout).unwrap();
+
+    let prefix = "User created: User { id: ";
+    let suffix = ", username:";
+    let start_bytes = create_stdout.find(prefix).unwrap_or(0) + prefix.len();
+    let end_bytes = create_stdout.find(suffix).unwrap_or(create_stdout.len());
+
+    let user_id = &create_stdout[start_bytes..end_bytes];
+    println!("Delete test user:{}", user_id);
+
+    let _ = Command::new("cargo")
+        .arg("run")
+        .arg("--bin")
+        .arg("cli")
+        .arg("users")
+        .arg("delete")
+        .arg(user_id)
+        .status();
+}
+
 pub fn get_logged_in_client(username: &str, email: &str, role: &str) -> Client {
     let password = "1234";
     let output = create_test_user(username, email, password, role);

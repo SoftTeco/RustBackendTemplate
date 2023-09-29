@@ -25,7 +25,7 @@ pub struct CacheConnection(deadpool_redis::Pool);
 
 pub fn server_error(e: Box<dyn std::error::Error>) -> Custom<Value> {
     log::error!("{}", e);
-    Custom(Status::InternalServerError, json!("Error"))
+    Custom(Status::InternalServerError, json!("Internal Server Error"))
 }
 
 #[rocket::async_trait]

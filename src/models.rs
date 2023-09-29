@@ -27,12 +27,18 @@ pub struct User {
     pub created_at: NaiveDateTime,
 }
 
-#[derive(Insertable)]
+#[derive(serde::Deserialize, Insertable)]
 #[diesel(table_name=users)]
 pub struct NewUser {
     pub username: String,
     pub email: String,
     pub password: String,
+}
+
+#[derive(serde::Serialize)]
+pub struct NewUserDto {
+    pub username: String,
+    pub email: String,
 }
 
 #[derive(Queryable, Debug)]
