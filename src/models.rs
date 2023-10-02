@@ -41,6 +41,11 @@ pub struct NewUserDto {
     pub email: String,
 }
 
+#[derive(serde::Deserialize)]
+pub struct ResetPasswordEmailDto {
+    pub email: String,
+}
+
 #[derive(Queryable, Debug)]
 pub struct Role {
     pub id: i32,
