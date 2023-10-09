@@ -2,10 +2,9 @@ use argon2::password_hash::{Error, SaltString};
 use argon2::{PasswordHash, PasswordHasher, PasswordVerifier};
 use rand::{distributions::Alphanumeric, rngs::OsRng, Rng};
 
-use crate::{
-    errors::AuthError,
-    models::{NewUser, User},
-};
+use crate::dto::CredentialsDto;
+use crate::models::NewUser;
+use crate::{errors::AuthError, models::User};
 
 pub const SESSION_LIFE_TIME: usize = 60 * 60 * 24;
 pub const SESSION_ID_LENGTH: usize = 128;
@@ -16,12 +15,6 @@ pub const RESET_PASSWORD_PATH: &str = "reset_password";
 const MIN_PASSWORD_LENGTH: usize = 6;
 const MIN_USERNAME_LENGTH: usize = 3;
 
-#[derive(serde::Deserialize)]
-pub struct Credentials {
-    pub email: String,
-    pub password: String,
-}
-
 pub fn hash_password(password: String) -> Result<String, Error> {
     let salt = SaltString::generate(OsRng);
     let argon = argon2::Argon2::default();
@@ -29,7 +22,7 @@ pub fn hash_password(password: String) -> Result<String, Error> {
     Ok(password_hash.to_string())
 }
 
-pub fn authorize_user(user: &User, credentials: &Credentials) -> Result<String, Error> {
+pub fn authorize_user(user: &User, credentials: &CredentialsDto) -> Result<String, Error> {
     let db_hash = PasswordHash::new(&user.password)?;
     let argon = argon2::Argon2::default();
     argon.verify_password(credentials.password.as_bytes(), &db_hash)?;
