@@ -1,7 +1,7 @@
 use reqwest::{blocking::Client, StatusCode};
 use rocket::form::validate::Len;
-use rust_template::errors::AuthError;
-use serde_json::{json, Value};
+use rust_template::errors::{ApiError, AuthError, NewUserDto};
+use serde_json::{from_value, json, Value};
 
 use crate::common::{
     create_test_user, delete_test_user, get_client_with_logged_in_editor,
@@ -214,16 +214,9 @@ fn when_credentials_ok_then_signup_returns_username_and_email() {
         .unwrap();
 
     let json: Value = response.json().unwrap();
-    assert_eq!(
-        {
-            json.get("username").unwrap();
-            json.get("email").unwrap();
-        },
-        {
-            drop(username);
-            drop(email);
-        },
-    );
+    let user: NewUserDto = from_value(json).unwrap();
+
+    assert_eq!(user, NewUserDto { username, email });
 }
 
 #[test]
@@ -278,18 +271,9 @@ fn when_username_exist_then_signup_returns_username_unavailable_error() {
     delete_test_user(output);
 
     let json: Value = response.json().unwrap();
-    assert_eq!(
-        {
-            json.get("error_type").unwrap();
-            json.get("code").unwrap();
-            json.get("error_type").unwrap();
-        },
-        {
-            AuthError::UnavailableUsername.value().error_type;
-            AuthError::UnavailableUsername.value().code;
-            AuthError::UnavailableUsername.value().message;
-        }
-    );
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::UnavailableUsername.value());
 }
 
 #[test]
@@ -311,18 +295,9 @@ fn when_inconsistent_username_then_signup_returns_invalid_username_error() {
         .unwrap();
 
     let json: Value = response.json().unwrap();
-    assert_eq!(
-        {
-            json.get("error_type").unwrap();
-            json.get("code").unwrap();
-            json.get("error_type").unwrap();
-        },
-        {
-            AuthError::InvalidUsername.value().error_type;
-            AuthError::InvalidUsername.value().code;
-            AuthError::InvalidUsername.value().message;
-        }
-    );
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::InvalidUsername.value());
 }
 
 #[test]
@@ -344,18 +319,9 @@ fn when_username_to_short_then_signup_returns_invalid_username_error() {
         .unwrap();
 
     let json: Value = response.json().unwrap();
-    assert_eq!(
-        {
-            json.get("error_type").unwrap();
-            json.get("code").unwrap();
-            json.get("error_type").unwrap();
-        },
-        {
-            AuthError::InvalidUsername.value().error_type;
-            AuthError::InvalidUsername.value().code;
-            AuthError::InvalidUsername.value().message;
-        }
-    );
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::InvalidUsername.value());
 }
 
 #[test]
@@ -383,18 +349,9 @@ fn when_email_exist_then_signup_returns_email_in_use_error() {
     delete_test_user(output);
 
     let json: Value = response.json().unwrap();
-    assert_eq!(
-        {
-            json.get("error_type").unwrap();
-            json.get("code").unwrap();
-            json.get("error_type").unwrap();
-        },
-        {
-            AuthError::EmailInUse.value().error_type;
-            AuthError::EmailInUse.value().code;
-            AuthError::EmailInUse.value().message;
-        }
-    );
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::EmailInUse.value());
 }
 
 #[test]
@@ -416,18 +373,9 @@ fn when_email_without_at_sign_then_signup_returns_email_invalid_error() {
         .unwrap();
 
     let json: Value = response.json().unwrap();
-    assert_eq!(
-        {
-            json.get("error_type").unwrap();
-            json.get("code").unwrap();
-            json.get("error_type").unwrap();
-        },
-        {
-            AuthError::InvalidEmail.value().error_type;
-            AuthError::InvalidEmail.value().code;
-            AuthError::InvalidEmail.value().message;
-        }
-    );
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::InvalidEmail.value());
 }
 
 #[test]
@@ -449,18 +397,9 @@ fn when_email_without_domain_then_signup_returns_email_invalid_error() {
         .unwrap();
 
     let json: Value = response.json().unwrap();
-    assert_eq!(
-        {
-            json.get("error_type").unwrap();
-            json.get("code").unwrap();
-            json.get("error_type").unwrap();
-        },
-        {
-            AuthError::InvalidEmail.value().error_type;
-            AuthError::InvalidEmail.value().code;
-            AuthError::InvalidEmail.value().message;
-        }
-    );
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::InvalidEmail.value());
 }
 
 #[test]
@@ -482,18 +421,9 @@ fn when_password_to_short_then_signup_returns_invalid_password_error() {
         .unwrap();
 
     let json: Value = response.json().unwrap();
-    assert_eq!(
-        {
-            json.get("error_type").unwrap();
-            json.get("code").unwrap();
-            json.get("error_type").unwrap();
-        },
-        {
-            AuthError::InvalidPassword.value().error_type;
-            AuthError::InvalidPassword.value().code;
-            AuthError::InvalidPassword.value().message;
-        }
-    );
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::InvalidPassword.value());
 }
 
 #[test]
@@ -515,16 +445,69 @@ fn when_inconsistent_password_then_signup_returns_invalid_password_error() {
         .unwrap();
 
     let json: Value = response.json().unwrap();
-    assert_eq!(
-        {
-            json.get("error_type").unwrap();
-            json.get("code").unwrap();
-            json.get("error_type").unwrap();
-        },
-        {
-            AuthError::InvalidPassword.value().error_type;
-            AuthError::InvalidPassword.value().code;
-            AuthError::InvalidPassword.value().message;
-        }
-    );
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::InvalidPassword.value());
+}
+
+#[test]
+fn when_email_correct_and_exists_password_reset_success() {
+    let username = format!("testViewer{}", rand::random::<u32>());
+    let email = format!("{}@gmail.com", username);
+    let password = "123456aA";
+    let output = create_test_user(&username, &email, password, "viewer");
+
+    println!("{:?}", output);
+
+    let client = Client::new();
+
+    let response = client
+        .post(format!("{}/password_reset", common::APP_HOST))
+        .json(&json!({
+            "email": email,
+        }))
+        .send()
+        .unwrap();
+
+    // Cleanup
+    delete_test_user(output);
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[test]
+fn when_email_is_wrong_then_password_reset_returns_invalid_email_error() {
+    let client = Client::new();
+
+    let response = client
+        .post(format!("{}/password_reset", common::APP_HOST))
+        .json(&json!({
+            "email": "wrong_email.gmail.com",
+        }))
+        .send()
+        .unwrap();
+
+    let json: Value = response.json().unwrap();
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::InvalidEmail.value());
+}
+
+#[test]
+fn when_email_is_not_present_then_password_reset_returns_email_not_exist_error() {
+    let email = format!("testViewer{}@gmail.com", rand::random::<u32>());
+    let client = Client::new();
+
+    let response = client
+        .post(format!("{}/password_reset", common::APP_HOST))
+        .json(&json!({
+            "email": email,
+        }))
+        .send()
+        .unwrap();
+
+    let json: Value = response.json().unwrap();
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::EmailNotExist.value());
 }
