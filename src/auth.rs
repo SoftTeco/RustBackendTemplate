@@ -9,6 +9,10 @@ use crate::{
 
 pub const SESSION_LIFE_TIME: usize = 60 * 60 * 24;
 pub const SESSION_ID_LENGTH: usize = 128;
+pub const RESET_TOKEN_LIFE_TIME: usize = 60 * 60;
+pub const SESSIONS_KEY_PREFIX: &str = "sessions";
+pub const TOKEN_KEY_PREFIX: &str = "reset_token";
+pub const RESET_PASSWORD_PATH: &str = "reset_password";
 const MIN_PASSWORD_LENGTH: usize = 6;
 const MIN_USERNAME_LENGTH: usize = 3;
 
@@ -30,13 +34,16 @@ pub fn authorize_user(user: &User, credentials: &Credentials) -> Result<String, 
     let argon = argon2::Argon2::default();
     argon.verify_password(credentials.password.as_bytes(), &db_hash)?;
 
-    let session_id = rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(SESSION_ID_LENGTH)
-        .map(char::from)
-        .collect();
-
+    let session_id = generate_token(SESSION_ID_LENGTH);
     Ok(session_id)
+}
+
+pub fn generate_token(length: usize) -> String {
+    rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(length)
+        .map(char::from)
+        .collect()
 }
 
 pub fn validate_signup_credentials(credentials: &NewUser) -> Result<(), AuthError> {

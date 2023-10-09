@@ -22,6 +22,9 @@ jobs:
         echo POSTGRES_USER=${{ secrets.POSTGRES_USER }} >> .env
         echo POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} >> .env
         echo POSTGRES_DB=${{ secrets.POSTGRES_DB }} >> .env
+        echo SMTP_HOST=${{ secrets.SMTP_HOST }} >> .env
+        echo SMTP_USERNAME=${{ secrets.SMTP_USERNAME }} >> .env
+        echo SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }} >> .env
 
     - name: Start containers
       run: docker compose -f "docker-compose.yml" up -d --build --wait

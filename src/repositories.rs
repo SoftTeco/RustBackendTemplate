@@ -1,4 +1,6 @@
-use crate::auth::SESSION_LIFE_TIME;
+use crate::auth::{
+    RESET_TOKEN_LIFE_TIME, SESSIONS_KEY_PREFIX, SESSION_LIFE_TIME, TOKEN_KEY_PREFIX,
+};
 use crate::models::{NewRole, NewUser, NewUserRole, Role, RoleCode, User, UserRole};
 use crate::rocket_routes::CacheConnection;
 use crate::schema::{roles, user_roles, users};
@@ -119,9 +121,23 @@ impl SessionRepository {
     ) -> Result<(), RedisError> {
         cache
             .set_ex::<_, _, ()>(
-                format!("sessions/{}", session_id),
+                format!("{}/{}", SESSIONS_KEY_PREFIX, session_id),
                 user_id,
                 SESSION_LIFE_TIME,
+            )
+            .await
+    }
+
+    pub async fn cache_reset_token(
+        reset_token: &String,
+        user_id: i32,
+        mut cache: Connection<CacheConnection>,
+    ) -> Result<(), RedisError> {
+        cache
+            .set_ex::<_, _, ()>(
+                format!("{}/{}", TOKEN_KEY_PREFIX, reset_token),
+                user_id,
+                RESET_TOKEN_LIFE_TIME,
             )
             .await
     }
