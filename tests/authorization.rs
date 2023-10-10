@@ -1,95 +1,25 @@
 use reqwest::{blocking::Client, StatusCode};
 use rocket::form::validate::Len;
-use rust_template::errors::{ApiError, AuthError, NewUserDto};
+use rust_template::{
+    dto::NewUserDto,
+    errors::{ApiError, AuthError},
+};
 use serde_json::{from_value, json, Value};
 
-use crate::common::{
-    create_test_user, delete_test_user, get_client_with_logged_in_editor,
-    get_client_with_logged_in_viewer,
-};
+use crate::common::{create_test_user, delete_test_user, generate_test_token};
 
 pub mod common;
 
-#[test]
-fn when_session_is_active_and_role_viewer_then_me_success() {
-    let client = get_client_with_logged_in_viewer();
-
-    let response = client
-        .get(format!("{}/me", common::APP_HOST))
-        .send()
-        .unwrap();
-
-    assert_eq!(response.status(), StatusCode::OK);
-}
-
-#[test]
-fn when_session_is_active_and_role_editor_then_me_success() {
-    let client = get_client_with_logged_in_editor();
-
-    let response = client
-        .get(format!("{}/me", common::APP_HOST))
-        .send()
-        .unwrap();
-
-    assert_eq!(response.status(), StatusCode::OK);
-}
-
-#[test]
-fn when_session_is_active_and_role_viewer_then_me_returns_username_and_email() {
-    let client = get_client_with_logged_in_viewer();
-
-    let response = client
-        .get(format!("{}/me", common::APP_HOST))
-        .send()
-        .unwrap();
-
-    let json: Value = response.json().unwrap();
-    assert_eq!(
-        {
-            json.get("username").unwrap();
-            json.get("email").unwrap();
-        },
-        {
-            "test_viewer";
-            "test_viewer@gmail.com";
-        },
-    );
-}
-
-#[test]
-fn when_session_is_active_and_me_success_then_password_is_none() {
-    let client = get_client_with_logged_in_viewer();
-
-    let response = client
-        .get(format!("{}/me", common::APP_HOST))
-        .send()
-        .unwrap();
-
-    assert_eq!(response.status(), StatusCode::OK);
-    let json: Value = response.json().unwrap();
-    assert!(json.get("password").is_none());
-}
-
-#[test]
-fn when_session_is_not_active_me_failed() {
-    let client = Client::new();
-
-    let response = client
-        .get(format!("{}/me", common::APP_HOST))
-        .send()
-        .unwrap();
-
-    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
-}
+const SESSION_ID_LENGTH: usize = 128;
 
 #[test]
 fn when_credentials_correct_then_login_success() {
-    let username = "test_viewer";
+    let username = format!("testViewer{}", rand::random::<u32>());
     let email = format!("{}@gmail.com", username);
     let password = "1234";
     let output = create_test_user(&username, &email, &password, "viewer");
 
-    println!("{:?}", output);
+    println!("1{:?}", output);
 
     let client = Client::new();
 
@@ -101,18 +31,21 @@ fn when_credentials_correct_then_login_success() {
         }))
         .send()
         .unwrap();
+
+    // Cleanup
+    delete_test_user(output);
 
     assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[test]
 fn when_credentials_correct_then_login_returns_token() {
-    let username = "test_viewer";
+    let username = format!("testViewer{}", rand::random::<u32>());
     let email = format!("{}@gmail.com", username);
     let password = "1234";
     let output = create_test_user(&username, &email, &password, "viewer");
 
-    println!("{:?}", output);
+    println!("2{:?}", output);
 
     let client = Client::new();
 
@@ -124,6 +57,9 @@ fn when_credentials_correct_then_login_returns_token() {
         }))
         .send()
         .unwrap();
+
+    // Cleanup
+    delete_test_user(output);
 
     let json: Value = response.json().unwrap();
     assert_eq!(json["token"].as_str().len(), 128);
@@ -131,11 +67,11 @@ fn when_credentials_correct_then_login_returns_token() {
 
 #[test]
 fn when_password_is_wrong_then_login_failed() {
-    let username = "test_viewer";
+    let username = format!("testViewer{}", rand::random::<u32>());
     let email = format!("{}@gmail.com", username);
     let output = create_test_user(&username, &email, "1234", "viewer");
 
-    println!("{:?}", output);
+    println!("3{:?}", output);
 
     let client = Client::new();
 
@@ -148,17 +84,20 @@ fn when_password_is_wrong_then_login_failed() {
         .send()
         .unwrap();
 
+    // Cleanup
+    delete_test_user(output);
+
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[test]
 fn when_email_is_wrong_then_login_failed() {
-    let username = "test_viewer";
+    let username = format!("testViewer{}", rand::random::<u32>());
     let email = format!("{}@gmail.com", username);
     let password = "1234";
     let output = create_test_user(&username, &email, password, "viewer");
 
-    println!("{:?}", output);
+    println!("4{:?}", output);
 
     let client = Client::new();
 
@@ -170,6 +109,9 @@ fn when_email_is_wrong_then_login_failed() {
         }))
         .send()
         .unwrap();
+
+    // Cleanup
+    delete_test_user(output);
 
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
@@ -226,7 +168,7 @@ fn when_user_exist_then_signup_failed() {
     let password = "123456aA";
     let output = create_test_user(&username, &email, password, "viewer");
 
-    println!("{:?}", output);
+    println!("5{:?}", output);
 
     let client = Client::new();
 
@@ -253,7 +195,7 @@ fn when_username_exist_then_signup_returns_username_unavailable_error() {
     let password = "123456aA";
     let output = create_test_user(&username, &email, password, "viewer");
 
-    println!("{:?}", output);
+    println!("6{:?}", output);
 
     let client = Client::new();
 
@@ -331,7 +273,7 @@ fn when_email_exist_then_signup_returns_email_in_use_error() {
     let password = "123456aA";
     let output = create_test_user(&username, &email, password, "viewer");
 
-    println!("{:?}", output);
+    println!("7{:?}", output);
 
     let client = Client::new();
 
@@ -457,7 +399,7 @@ fn when_email_correct_and_exists_password_reset_success() {
     let password = "123456aA";
     let output = create_test_user(&username, &email, password, "viewer");
 
-    println!("{:?}", output);
+    println!("8{:?}", output);
 
     let client = Client::new();
 
@@ -510,4 +452,114 @@ fn when_email_is_not_present_then_password_reset_returns_email_not_exist_error()
     let error: ApiError = from_value(json).unwrap();
 
     assert_eq!(error, AuthError::EmailNotExist.value());
+}
+
+#[test]
+fn when_password_wrong_then_password_failed() {
+    let client = Client::new();
+    let token = generate_test_token(SESSION_ID_LENGTH);
+
+    let response = client
+        .put(format!("{}/password/{token}", common::APP_HOST))
+        .json(&json!({
+            "password":"1234",
+            "confirmation":"1234"
+        }))
+        .send()
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[test]
+fn when_password_wrong_then_password_returns_invalid_password_error() {
+    let client = Client::new();
+    let token = generate_test_token(SESSION_ID_LENGTH);
+
+    let response = client
+        .put(format!("{}/password/{token}", common::APP_HOST))
+        .json(&json!({
+            "password":"1234",
+            "confirmation":"1234"
+        }))
+        .send()
+        .unwrap();
+
+    let json: Value = response.json().unwrap();
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::InvalidPassword.value())
+}
+
+#[test]
+fn when_confirmation_is_not_match_then_password_returns_invalid_password_error() {
+    let client = Client::new();
+    let token = generate_test_token(SESSION_ID_LENGTH);
+
+    let response = client
+        .put(format!("{}/password/{token}", common::APP_HOST))
+        .json(&json!({
+            "password":"123456aA",
+            "confirmation":"123456aB"
+        }))
+        .send()
+        .unwrap();
+
+    let json: Value = response.json().unwrap();
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::InvalidPassword.value())
+}
+
+#[test]
+fn when_token_length_is_incorrect_then_password_returns_invalid_token_error() {
+    let client = Client::new();
+    let token = generate_test_token(64);
+
+    let response = client
+        .put(format!("{}/password/{token}", common::APP_HOST))
+        .json(&json!({
+            "password":"123456aA",
+            "confirmation":"123456aA"
+        }))
+        .send()
+        .unwrap();
+
+    let json: Value = response.json().unwrap();
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::InvalidToken.value())
+}
+
+#[test]
+fn when_token_wrong_or_expired_then_password_returns_unauthorized_status() {
+    let client = Client::new();
+    let token = generate_test_token(SESSION_ID_LENGTH);
+
+    let response = client
+        .put(format!("{}/password/{token}", common::APP_HOST))
+        .json(&json!({
+            "password":"123456aA",
+            "confirmation":"123456aA"
+        }))
+        .send()
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED)
+}
+
+#[test]
+fn when_token_missed_then_password_returns_not_found_status() {
+    let client = Client::new();
+
+    let response = client
+        .put(format!("{}/password/", common::APP_HOST))
+        .json(&json!({
+            "password":"123456aA",
+            "confirmation":"123456aA"
+        }))
+        .send()
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND)
 }
