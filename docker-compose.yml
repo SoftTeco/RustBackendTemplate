@@ -24,6 +24,7 @@ services:
   app:
     build: .
     environment:
+      - BASE_URL=${BASE_URL}
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB}
       - |
         ROCKET_DATABASES={
@@ -37,4 +38,3 @@ services:
       - 8000:8000
     volumes:
       - ./:/app
-

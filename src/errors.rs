@@ -1,3 +1,5 @@
+use utoipa::ToSchema;
+
 #[derive(serde::Serialize, Debug, serde::Deserialize, PartialEq)]
 pub struct ApiError {
     pub error_type: String,
@@ -5,7 +7,7 @@ pub struct ApiError {
     pub message: String,
 }
 
-#[derive(Debug, serde::Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq, ToSchema)]
 pub enum AuthError {
     WrongCredentials,
     InvalidUsername,
