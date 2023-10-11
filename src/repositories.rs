@@ -79,6 +79,25 @@ impl UserRepository {
             .first(connection)
     }
 
+    pub async fn find_id_by_temporary_token(
+        token: &String,
+        cache: &mut Connection<CacheConnection>,
+    ) -> Result<i32, RedisError> {
+        cache
+            .get::<_, i32>(format!("{}/{}", TOKEN_KEY_PREFIX, token))
+            .await
+    }
+
+    pub fn update_password(
+        connection: &mut PgConnection,
+        id: i32,
+        password: &String,
+    ) -> QueryResult<User> {
+        diesel::update(users::table.find(id))
+            .set(users::password.eq(password))
+            .get_result(connection)
+    }
+
     pub fn delete(connection: &mut PgConnection, id: i32) -> QueryResult<usize> {
         diesel::delete(user_roles::table.filter(user_roles::user_id.eq(id))).execute(connection)?;
         diesel::delete(users::table.find(id)).execute(connection)
@@ -139,6 +158,15 @@ impl SessionRepository {
                 user_id,
                 RESET_TOKEN_LIFE_TIME,
             )
+            .await
+    }
+
+    pub async fn redeem_reset_token(
+        reset_token: &String,
+        cache: &mut Connection<CacheConnection>,
+    ) -> Result<(), RedisError> {
+        cache
+            .del(format!("{}/{}", TOKEN_KEY_PREFIX, reset_token))
             .await
     }
 }

@@ -1,3 +1,5 @@
+use rand::distributions::Alphanumeric;
+use rand::Rng;
 use reqwest::blocking::{Client, ClientBuilder};
 use reqwest::header::{self, HeaderMap, HeaderValue};
 use reqwest::StatusCode;
@@ -42,8 +44,8 @@ pub fn delete_test_user(create_output: Output) {
         .status();
 }
 
-pub fn get_logged_in_client(username: &str, email: &str, role: &str) -> Client {
-    let password = "1234";
+pub fn get_logged_in_client(username: &str, email: &str, role: &str) -> (Client, Output) {
+    let password = "123456aA";
     let output = create_test_user(username, email, password, role);
 
     println!("{:?}", output);
@@ -69,16 +71,30 @@ pub fn get_logged_in_client(username: &str, email: &str, role: &str) -> Client {
         HeaderValue::from_str(&auth_header).unwrap(),
     );
 
-    ClientBuilder::new()
+    let client = ClientBuilder::new()
         .default_headers(headers)
         .build()
-        .unwrap()
+        .unwrap();
+
+    return (client, output);
 }
 
-pub fn get_client_with_logged_in_viewer() -> Client {
-    get_logged_in_client("test_viewer", "test_viewer@gmail.com", "viewer")
+pub fn get_client_with_logged_in_viewer() -> (Client, Output) {
+    let username = format!("testViewer{}", rand::random::<u32>());
+    let email = format!("{}@gmail.com", username);
+    get_logged_in_client(username.as_str(), email.as_str(), "viewer")
 }
 
-pub fn get_client_with_logged_in_editor() -> Client {
-    get_logged_in_client("test_editor", "test_editor@gmail.com", "editor")
+pub fn get_client_with_logged_in_editor() -> (Client, Output) {
+    let username = format!("testEditor{}", rand::random::<u32>());
+    let email = format!("{}@gmail.com", username);
+    get_logged_in_client(username.as_str(), email.as_str(), "editor")
+}
+
+pub fn generate_test_token(length: usize) -> String {
+    rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(length)
+        .map(char::from)
+        .collect()
 }

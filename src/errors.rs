@@ -1,9 +1,3 @@
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
-pub struct NewUserDto {
-    pub username: String,
-    pub email: String,
-}
-
 #[derive(serde::Serialize, Debug, serde::Deserialize, PartialEq)]
 pub struct ApiError {
     pub error_type: String,
@@ -17,6 +11,7 @@ pub enum AuthError {
     InvalidUsername,
     InvalidEmail,
     InvalidPassword,
+    InvalidToken,
     UnavailableUsername,
     EmailInUse,
     EmailNotExist,
@@ -45,6 +40,11 @@ impl AuthError {
                 error_type: ERROR_TYPE.to_string(),
                 code: "invalid_password".to_string(),
                 message: "Invalid password".to_string(),
+            },
+            AuthError::InvalidToken => ApiError {
+                error_type: ERROR_TYPE.to_string(),
+                code: "invalid_token".to_string(),
+                message: "Invalid token".to_string(),
             },
             AuthError::UnavailableUsername => ApiError {
                 error_type: ERROR_TYPE.to_string(),

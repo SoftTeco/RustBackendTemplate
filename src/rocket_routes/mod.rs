@@ -1,4 +1,5 @@
 pub mod authorization;
+pub mod profile;
 
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::Duration;
