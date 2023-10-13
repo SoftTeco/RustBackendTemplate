@@ -18,6 +18,7 @@ use rocket_db_pools::deadpool_redis::redis::AsyncCommands;
 use rocket_db_pools::{deadpool_redis, Connection, Database};
 
 use crate::auth::SESSIONS_KEY_PREFIX;
+use crate::errors::AuthError;
 use crate::models::User;
 use crate::repositories::UserRepository;
 
@@ -41,7 +42,7 @@ pub fn server_error(e: Box<dyn std::error::Error>) -> Custom<Value> {
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for User {
-    type Error = ();
+    type Error = Value;
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         let auth_header = request
             .headers()
@@ -67,12 +68,15 @@ impl<'r> FromRequest<'r> for User {
             if let Ok(user_id) = result {
                 return match db.run(move |c| UserRepository::find(c, user_id)).await {
                     Ok(user) => Outcome::Success(user),
-                    _ => Outcome::Failure((Status::Unauthorized, ())),
+                    _ => Outcome::Failure((
+                        Status::Unauthorized,
+                        json!(AuthError::InvalidToken.value()),
+                    )),
                 };
             }
         }
 
-        Outcome::Failure((Status::Unauthorized, ()))
+        Outcome::Failure((Status::Unauthorized, json!(())))
     }
 }
 

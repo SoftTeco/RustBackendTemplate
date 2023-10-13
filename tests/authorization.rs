@@ -1,7 +1,7 @@
 use reqwest::{blocking::Client, StatusCode};
 use rocket::form::validate::Len;
 use rust_template::{
-    dto::NewUserDto,
+    dto::NewUserResponseDto,
     errors::{ApiError, AuthError},
 };
 use serde_json::{from_value, json, Value};
@@ -156,9 +156,9 @@ fn when_credentials_ok_then_signup_returns_username_and_email() {
         .unwrap();
 
     let json: Value = response.json().unwrap();
-    let user: NewUserDto = from_value(json).unwrap();
+    let user: NewUserResponseDto = from_value(json).unwrap();
 
-    assert_eq!(user, NewUserDto { username, email });
+    assert_eq!(user, NewUserResponseDto { username, email });
 }
 
 #[test]

@@ -12,11 +12,36 @@ use crate::{
 
 use super::server_error;
 
+/// Get the current user's profile
+#[utoipa::path(
+    get,
+    path = "/profile/me",
+    responses(
+        (status = 200, description = "OK", body = UserProfileDto),
+        (status = 401, description = "Unauthorized", body = AuthError, examples(
+            ("InvalidToken" = (summary = "errors::AuthError::InvalidToken", value = json!(AuthError::InvalidToken.value()))),
+        )),
+    ),
+    security(("token"=[]))
+)]
 #[rocket::get("/profile/me")]
 pub fn me(user: User) -> Value {
     json!(user)
 }
 
+/// Change the current user's password
+#[utoipa::path(
+    put,
+    path = "/profile/password",
+    request_body = NewPasswordDto,
+    responses(
+        (status = 200, description = "OK"),
+        (status = 400, description = "Bad Request", body = AuthError, examples(
+            ("InvalidPassword" = (summary = "errors::AuthError::InvalidPassword", value = json!(AuthError::InvalidPassword.value()))),
+        )),
+    ),
+    security(("token"=[]))
+)]
 #[rocket::put("/profile/password", format = "json", data = "<password_dto>")]
 pub async fn update_password(
     password_dto: Json<NewPasswordDto>,
