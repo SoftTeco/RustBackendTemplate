@@ -1,4 +1,11 @@
-use reqwest::{blocking::Client, StatusCode};
+use reqwest::{
+    blocking::Client,
+    header::{
+        ACCESS_CONTROL_ALLOW_CREDENTIALS, ACCESS_CONTROL_ALLOW_HEADERS,
+        ACCESS_CONTROL_ALLOW_METHODS, ACCESS_CONTROL_ALLOW_ORIGIN,
+    },
+    StatusCode,
+};
 use rocket::form::validate::Len;
 use rust_template::{
     dto::NewUserResponseDto,
@@ -562,4 +569,24 @@ fn when_token_missed_then_password_returns_not_found_status() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::NOT_FOUND)
+}
+
+#[test]
+fn when_any_request_is_received_then_response_contains_cors_headers() {
+    let client = Client::new();
+
+    let response = client.get(format!("{}", common::APP_HOST)).send().unwrap();
+
+    let headers = response.headers();
+
+    assert_eq!(headers.get(ACCESS_CONTROL_ALLOW_ORIGIN).unwrap(), "*");
+    assert_eq!(headers.get(ACCESS_CONTROL_ALLOW_HEADERS).unwrap(), "*");
+    assert_eq!(
+        headers.get(ACCESS_CONTROL_ALLOW_METHODS).unwrap(),
+        "GET, POST, PUT, DELETE"
+    );
+    assert_eq!(
+        headers.get(ACCESS_CONTROL_ALLOW_CREDENTIALS).unwrap(),
+        "true"
+    );
 }
