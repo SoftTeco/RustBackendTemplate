@@ -1,5 +1,5 @@
 use rocket_db_pools::Database;
-use rust_template::rocket_routes::{authorization, profile};
+use rust_template::rocket_routes::{authorization, profile, Cors};
 use rust_template::rocket_routes::{CacheConnection, DbConnection};
 use rust_template::{dto, errors};
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
@@ -55,6 +55,7 @@ async fn main() {
         .mount(
             "/",
             rocket::routes![
+                rust_template::rocket_routes::options,
                 authorization::login,
                 authorization::signup,
                 authorization::reset_password,
@@ -67,6 +68,7 @@ async fn main() {
             "/",
             SwaggerUi::new("/swagger-ui/<_..>").url("/api-docs/openapi.json", openapi),
         )
+        .attach(Cors)
         .attach(DbConnection::fairing())
         .attach(CacheConnection::init())
         .launch()
