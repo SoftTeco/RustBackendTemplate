@@ -2,9 +2,9 @@ name: Integration tests
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build_and_test:
@@ -13,33 +13,32 @@ jobs:
     environment: DEV
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - name: Create an .env file
-      run: |
-        touch .env
-        echo BASE_URL=${{ secrets.BASE_URL }} >> .env
-        echo POSTGRES_USER=${{ secrets.POSTGRES_USER }} >> .env
-        echo POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} >> .env
-        echo POSTGRES_DB=${{ secrets.POSTGRES_DB }} >> .env
-        echo SMTP_HOST=${{ secrets.SMTP_HOST }} >> .env
-        echo SMTP_USERNAME=${{ secrets.SMTP_USERNAME }} >> .env
-        echo SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }} >> .env
+      - name: Create an .env file
+        run: |
+          touch .env
+          echo BASE_URL=${{ secrets.BASE_URL }} >> .env
+          echo POSTGRES_USER=${{ secrets.POSTGRES_USER }} >> .env
+          echo POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} >> .env
+          echo POSTGRES_DB=${{ secrets.POSTGRES_DB }} >> .env
+          echo SMTP_HOST=${{ secrets.SMTP_HOST }} >> .env
+          echo SMTP_USERNAME=${{ secrets.SMTP_USERNAME }} >> .env
+          echo SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }} >> .env
 
-    - name: Start containers
-      run: docker compose -f "docker-compose.yml" up -d --build --wait
+      - name: Start containers
+        run: docker compose -f "docker-compose.yml" up -d --build --wait postgres redis app
 
-    - name: Run migrations
-      run: docker compose exec -T app diesel migration run
+      - name: Run migrations
+        run: docker compose exec -T app diesel migration run
 
-    - name: Run the app 
-      run: docker compose exec -T app cargo run &
+      - name: Run the app
+        run: docker compose exec -T app cargo run &
 
-    - name: Run tests 
-      run: docker compose exec -T app cargo test
+      - name: Run tests
+        run: docker compose exec -T app cargo test
 
-    - name: Stop containers
-      if: always()
-      run: docker compose -f "docker-compose.yml" down
-      
+      - name: Stop containers
+        if: always()
+        run: docker compose -f "docker-compose.yml" down
