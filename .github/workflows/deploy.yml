@@ -1,18 +1,16 @@
-name: Deploying the App
+name: build 
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - "main"
   pull_request:
-    branches: ["main"]
-
-env:
-  DOCKER_USER: ${{secrets.DOCKER_USER}}
-  DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
-  DOCKER_REPO: ${{secrets.DOCKER_REPO}}
+    types:
+      - closed
 
 jobs:
   build_and_deploy:
+    if: github.event.pull_request.merged == true
     timeout-minutes: 15
     runs-on: ubuntu-latest
     environment: DEV
@@ -21,22 +19,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Create an .env file
-        run: |
-          touch .env
-          echo BASE_URL=${{ secrets.BASE_URL }} >> .env
-          echo POSTGRES_USER=${{ secrets.POSTGRES_USER }} >> .env
-          echo POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} >> .env
-          echo POSTGRES_DB=${{ secrets.POSTGRES_DB }} >> .env
-          echo SMTP_HOST=${{ secrets.SMTP_HOST }} >> .env
-          echo SMTP_USERNAME=${{ secrets.SMTP_USERNAME }} >> .env
-          echo SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }} >> .env
-          echo DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }} >> .env
-          echo DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }} >> .env
-          echo DOCKER_REPO=${{ secrets.DOCKER_REPO }} >> .env
+      - name: Build Docker image 
+        run: docker build -f docker/deploy/Dockerfile -t ${{secrets.DOCKER_USERNAME}}/${{secrets.DOCKER_REPO}}:latest .
 
-      - name: Start containers
-        run: docker compose -f "docker-compose.yml" build postgres redis app_deploy
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -44,4 +29,18 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Push the image to the Hub
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/${{secrets.DOCKER_REPO}}:latest
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPO }}:latest
+
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          username: ${{ secrets.SERVER_USERNAME }}
+          host: ${{ secrets.SERVER_HOST }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+            docker rm $(docker stop $(docker ps -a -q --filter ancestor=${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPO }}:latest))
+            docker image prune -a -f
+            docker pull ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPO }}:latest
+            docker run -d -p 80:8000 --env-file .env ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPO }}
+

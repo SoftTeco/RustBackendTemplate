@@ -8,11 +8,10 @@ pub struct NewUserDto {
     #[schema(example = "gunrock")]
     pub username: String,
     /// Unique email address
-    #[schema(example = "gunrock@gmail.com")]
+    #[schema(example = "gunrockg@gmail.com")]
     pub email: String,
     /// Password (at least 6 characters, at least one uppercase)
     #[schema(example = "123456aA")]
-    #[serde(skip_serializing)]
     pub password: String,
 }
 
@@ -21,14 +20,14 @@ pub struct NewUserDto {
 pub struct NewUserResponseDto {
     #[schema(example = "gunrock")]
     pub username: String,
-    #[schema(example = "gunrock@gmail.com")]
+    #[schema(example = "gunrockg@gmail.com")]
     pub email: String,
 }
 
 /// Login credentials request body
 #[derive(serde::Deserialize, ToSchema)]
 pub struct CredentialsDto {
-    #[schema(example = "gunrock@gmail.com")]
+    #[schema(example = "gunrockg@gmail.com")]
     pub email: String,
     #[schema(example = "123456aA")]
     pub password: String,
@@ -38,7 +37,7 @@ pub struct CredentialsDto {
 #[derive(serde::Deserialize, ToSchema)]
 pub struct ResetPasswordEmailDto {
     /// Registered email address
-    #[schema(example = "gunrock@gmail.com")]
+    #[schema(example = "gunrockg@gmail.com")]
     pub email: String,
 }
 

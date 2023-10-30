@@ -12,9 +12,13 @@ RUN rm -rf ./src
 
 FROM rust:latest as runner
 
-COPY --from=builder /app/target/release/server /usr/local/bin/rust_template_server
+RUN mkdir /opt/template_api
 
-WORKDIR /usr/local/bin
+COPY --from=builder /app/target/release/server /opt/template_api/api_server
+COPY --from=builder /app/templates /opt/template_api/templates
+
+WORKDIR /opt/template_api
 
 ENV ROCKET_PROFILE=release ROCKET_ADDRESS=0.0.0.0
-CMD ["rust_template_server"]
+
+CMD ./api_server
