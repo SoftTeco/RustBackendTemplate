@@ -22,7 +22,9 @@ services:
     image: redis:latest
 
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/dev/Dockerfile
     environment:
       - BASE_URL=${BASE_URL}
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB}

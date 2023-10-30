@@ -1,3 +1,6 @@
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use rocket::fairing::AdHoc;
+use rocket::{Build, Rocket};
 use rocket_db_pools::Database;
 use rust_template::rocket_routes::{authorization, profile, Cors};
 use rust_template::rocket_routes::{CacheConnection, DbConnection};
@@ -10,6 +13,7 @@ use utoipa_swagger_ui::SwaggerUi;
 extern crate rust_template;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
 #[rocket::main]
 async fn main() {
@@ -71,6 +75,10 @@ async fn main() {
         .attach(Cors)
         .attach(DbConnection::fairing())
         .attach(CacheConnection::init())
+        .attach(AdHoc::on_ignite(
+            "Run database migrations",
+            run_db_migrations,
+        ))
         .launch()
         .await;
 }
@@ -103,4 +111,15 @@ fn set_openapi_doc_parameters(builder: OpenApiBuilder) -> OpenApiBuilder {
         .build();
 
     builder.info(info).servers(Some(vec![server].into_iter()))
+}
+
+async fn run_db_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
+    let db = DbConnection::get_one(&rocket)
+        .await
+        .expect("Cannot connect to postgres");
+    db.run(move |connection| {
+        connection.run_pending_migrations(MIGRATIONS).unwrap();
+    })
+    .await;
+    rocket
 }
