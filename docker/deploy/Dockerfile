@@ -19,6 +19,6 @@ COPY --from=builder /app/templates /opt/template_api/templates
 
 WORKDIR /opt/template_api
 
-ENV ROCKET_PROFILE=release ROCKET_ADDRESS=0.0.0.0
+ENV ROCKET_PROFILE=release ROCKET_ADDRESS=0.0.0.0 ROCKET_PORT=433
 
 CMD ./api_server
