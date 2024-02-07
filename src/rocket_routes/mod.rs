@@ -69,7 +69,7 @@ impl<'r> FromRequest<'r> for User {
             if let Ok(user_id) = result {
                 return match db.run(move |c| UserRepository::find(c, user_id)).await {
                     Ok(user) => Outcome::Success(user),
-                    _ => Outcome::Failure((
+                    _ => Outcome::Error((
                         Status::Unauthorized,
                         json!(AuthError::InvalidToken.value()),
                     )),
@@ -77,7 +77,7 @@ impl<'r> FromRequest<'r> for User {
             }
         }
 
-        Outcome::Failure((Status::Unauthorized, json!(())))
+        Outcome::Error((Status::Unauthorized, json!(())))
     }
 }
 
