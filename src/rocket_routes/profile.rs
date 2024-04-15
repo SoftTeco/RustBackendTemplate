@@ -25,8 +25,11 @@ use super::server_error;
     security(("token"=[]))
 )]
 #[rocket::get("/profile/me")]
-pub fn me(user: User) -> Value {
-    json!(user)
+pub fn me(user: Result<User, Value>) -> Result<Custom<Value>, Custom<Value>> {
+    match user {
+        Ok(user) => Ok(Custom(Status::Ok, json!(user))),
+        Err(value) => Err(Custom(Status::Unauthorized, value)),
+    }
 }
 
 /// Change the current user's password

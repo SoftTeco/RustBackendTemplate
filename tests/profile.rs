@@ -89,7 +89,10 @@ fn when_session_is_not_active_me_failed() {
         .send()
         .unwrap();
 
-    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    let json: Value = response.json().unwrap();
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::InvalidToken.value());
 }
 
 #[test]

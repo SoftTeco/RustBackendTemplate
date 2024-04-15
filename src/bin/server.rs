@@ -1,5 +1,6 @@
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use rocket::fairing::AdHoc;
+
 use rocket::{Build, Rocket};
 use rocket_db_pools::Database;
 use rust_template::rocket_routes::{authorization, profile, Cors};
