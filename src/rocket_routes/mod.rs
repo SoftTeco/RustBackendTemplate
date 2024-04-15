@@ -77,7 +77,7 @@ impl<'r> FromRequest<'r> for User {
             }
         }
 
-        Outcome::Error((Status::Unauthorized, json!(())))
+        Outcome::Error((Status::Unauthorized, json!(AuthError::InvalidToken.value())))
     }
 }
 

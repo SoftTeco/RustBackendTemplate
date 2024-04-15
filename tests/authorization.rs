@@ -24,7 +24,7 @@ fn when_credentials_correct_then_login_success() {
     let username = format!("testViewer{}", rand::random::<u32>());
     let email = format!("{}@gmail.com", username);
     let password = "1234";
-    let output = create_test_user(&username, &email, &password, "viewer");
+    let output = create_test_user(&username, &email, password, "viewer");
 
     println!("1{:?}", output);
 
@@ -50,7 +50,7 @@ fn when_credentials_correct_then_login_returns_token() {
     let username = format!("testViewer{}", rand::random::<u32>());
     let email = format!("{}@gmail.com", username);
     let password = "1234";
-    let output = create_test_user(&username, &email, &password, "viewer");
+    let output = create_test_user(&username, &email, password, "viewer");
 
     println!("2{:?}", output);
 
@@ -251,7 +251,7 @@ fn when_inconsistent_username_then_signup_returns_invalid_username_error() {
 
 #[test]
 fn when_username_to_short_then_signup_returns_invalid_username_error() {
-    let username = format!("te");
+    let username = "te".to_string();
     let email = format!("{}@gmail.com", username);
     let password = "123456aA";
 
@@ -575,7 +575,7 @@ fn when_token_missed_then_password_returns_not_found_status() {
 fn when_any_request_is_received_then_response_contains_cors_headers() {
     let client = Client::new();
 
-    let response = client.get(format!("{}", common::APP_HOST)).send().unwrap();
+    let response = client.get(common::APP_HOST.to_string()).send().unwrap();
 
     let headers = response.headers();
 
