@@ -3,6 +3,7 @@ use rocket::fairing::AdHoc;
 
 use rocket::{Build, Rocket};
 use rocket_db_pools::Database;
+use rocket_dyn_templates::Template;
 use rust_template::rocket_routes::{authorization, profile, Cors};
 use rust_template::rocket_routes::{CacheConnection, DbConnection};
 use rust_template::{dto, errors};
@@ -25,6 +26,7 @@ async fn main() {
             authorization::signup,
             authorization::reset_password,
             authorization::change_password,
+            authorization::confirm_signup,
             profile::me,
             profile::update_password,
         ),
@@ -65,6 +67,7 @@ async fn main() {
                 authorization::signup,
                 authorization::reset_password,
                 authorization::change_password,
+                authorization::confirm_signup,
                 profile::me,
                 profile::update_password,
             ],
@@ -76,6 +79,7 @@ async fn main() {
         .attach(Cors)
         .attach(DbConnection::fairing())
         .attach(CacheConnection::init())
+        .attach(Template::fairing())
         .attach(AdHoc::on_ignite(
             "Run database migrations",
             run_db_migrations,

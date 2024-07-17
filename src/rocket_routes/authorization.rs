@@ -2,18 +2,22 @@ use std::net::SocketAddr;
 
 use super::{server_error, DbConnection, DEEP_LINK_HOST, DEEP_LINK_SCHEME};
 use crate::{
-    auth::{self, generate_token, is_email_valid, validate_signup_credentials},
-    auth::{is_password_valid, RESET_PASSWORD_PATH, SESSION_ID_LENGTH},
+    auth::{
+        self, generate_token, is_email_valid, is_password_valid, validate_signup_credentials,
+        CONFIRM_EMAIL_PATH, CONFIRM_TOKEN_KEY_PREFIX, CONFIRM_TOKEN_LIFE_TIME, RESET_PASSWORD_PATH,
+        RESET_TOKEN_KEY_PREFIX, RESET_TOKEN_LIFE_TIME, SESSION_ID_LENGTH,
+    },
     dto::{
         AuthTokenDto, CredentialsDto, NewPasswordDto, NewUserResponseDto, ResetPasswordEmailDto,
     },
     errors::AuthError,
-    mail::send_reset_password_email,
+    mail::{send_confirmation_email, send_reset_password_email},
     models::{NewUser, RoleCode},
     repositories::{SessionRepository, UserRepository},
     rocket_routes::CacheConnection,
 };
 
+use chrono::{TimeDelta, Utc};
 use diesel::result::DatabaseErrorKind;
 
 use rocket::{
@@ -26,6 +30,7 @@ use rocket_db_pools::{
     deadpool_redis::redis::{ErrorKind, RedisError},
     Connection,
 };
+use rocket_dyn_templates::{context, Template};
 
 /// Signup with email, username and password
 ///
@@ -55,10 +60,15 @@ use rocket_db_pools::{
 pub async fn signup(
     credentials: Json<NewUser>,
     db: DbConnection,
+    cache: Connection<CacheConnection>,
+    client_addr: SocketAddr,
 ) -> Result<Custom<Value>, Custom<Value>> {
     if let Err(e) = validate_signup_credentials(&credentials) {
         return Err(Custom(Status::BadRequest, json!(e.value())));
     }
+
+    let email = credentials.email.clone();
+    check_existence(email, &db).await?;
 
     let password_hash = auth::hash_password(credentials.password.clone()).unwrap();
     let new_user = NewUser {
@@ -67,38 +77,91 @@ pub async fn signup(
         password: password_hash.to_string(),
     };
 
-    db.run(move |connection| {
-        UserRepository::create(connection, new_user, vec![RoleCode::Viewer])
-            .map(|user| {
-                Custom(
-                    Status::Created,
-                    json!(NewUserResponseDto {
-                        username: user.username,
-                        email: user.email,
-                    }),
-                )
-            })
-            .map_err(|e| match e {
-                diesel::result::Error::DatabaseError(
-                    DatabaseErrorKind::UniqueViolation,
-                    error_info,
-                ) => match error_info.constraint_name() {
-                    Some("users_email_key") => {
-                        Custom(Status::BadRequest, json!(AuthError::EmailInUse.value()))
-                    }
-                    Some("users_username_key") => Custom(
-                        Status::BadRequest,
-                        json!(AuthError::UnavailableUsername.value()),
-                    ),
-                    _ => Custom(
-                        Status::BadRequest,
-                        json!(AuthError::WrongCredentials.value()),
-                    ),
+    let user = db
+        .run(move |connection| {
+            UserRepository::create(connection, new_user, vec![RoleCode::Viewer]).map_err(
+                |e| match e {
+                    diesel::result::Error::DatabaseError(
+                        DatabaseErrorKind::UniqueViolation,
+                        error_info,
+                    ) => match error_info.constraint_name() {
+                        Some("users_email_key") => {
+                            Custom(Status::BadRequest, json!(AuthError::EmailInUse.value()))
+                        }
+                        Some("users_username_key") => Custom(
+                            Status::BadRequest,
+                            json!(AuthError::UnavailableUsername.value()),
+                        ),
+                        _ => Custom(
+                            Status::BadRequest,
+                            json!(AuthError::WrongCredentials.value()),
+                        ),
+                    },
+                    _ => server_error(e.into()),
                 },
-                _ => server_error(e.into()),
-            })
-    })
+            )
+        })
+        .await?;
+
+    let confirm_token = generate_token(SESSION_ID_LENGTH);
+
+    SessionRepository::cache_token(
+        &confirm_token,
+        user.id,
+        CONFIRM_TOKEN_KEY_PREFIX,
+        CONFIRM_TOKEN_LIFE_TIME,
+        cache,
+    )
     .await
+    .map_err(|e| server_error(e.into()))?;
+
+    let base_url = std::env::var("BASE_URL").expect("Unable to read base URL from env");
+    let link = format!("{base_url}/{CONFIRM_EMAIL_PATH}/{confirm_token}");
+
+    send_confirmation_email(&user, link, client_addr).await;
+
+    Ok(Custom(
+        Status::Created,
+        json!(NewUserResponseDto {
+            username: user.username,
+            email: user.email,
+        }),
+    ))
+}
+
+async fn check_existence(email: String, db: &DbConnection) -> Result<(), Custom<Value>> {
+    let existing_user = db
+        .run(move |connection| {
+            UserRepository::find_by_email(connection, &email).map_err(|e| server_error(e.into()))
+        })
+        .await;
+
+    if let Ok(user) = existing_user {
+        if user.confirmed {
+            return Ok(());
+        }
+
+        let current_time = Utc::now().naive_utc();
+        let expiration_time = user
+            .created_at
+            .checked_add_signed(TimeDelta::try_seconds(CONFIRM_TOKEN_LIFE_TIME as i64).unwrap())
+            .unwrap();
+
+        if current_time > expiration_time {
+            let _ = db
+                .run(move |connection| {
+                    UserRepository::delete(connection, user.id).map_err(|e| server_error(e.into()))
+                })
+                .await;
+            return Ok(());
+        } else {
+            return Err(Custom(
+                Status::BadRequest,
+                json!(AuthError::UnconfirmedUser.value()),
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Log in with the given credentials
@@ -194,9 +257,15 @@ pub async fn reset_password(
 
     let reset_token = generate_token(SESSION_ID_LENGTH);
 
-    SessionRepository::cache_reset_token(&reset_token, user.id, cache)
-        .await
-        .map_err(|e| server_error(e.into()))?;
+    SessionRepository::cache_token(
+        &reset_token,
+        user.id,
+        RESET_TOKEN_KEY_PREFIX,
+        RESET_TOKEN_LIFE_TIME,
+        cache,
+    )
+    .await
+    .map_err(|e| server_error(e.into()))?;
 
     let deep_link =
         format!("{DEEP_LINK_SCHEME}://{DEEP_LINK_HOST}/{RESET_PASSWORD_PATH}/{reset_token}");
@@ -206,7 +275,7 @@ pub async fn reset_password(
     Ok(Status::Ok)
 }
 
-/// Changing the password in the password reset flow
+/// Change the password in the password reset flow
 #[utoipa::path(
     put,
     path = "/password/{token}",
@@ -224,7 +293,7 @@ pub async fn reset_password(
 #[rocket::put("/password/<token>", format = "json", data = "<password_dto>")]
 pub async fn change_password(
     password_dto: Json<NewPasswordDto>,
-    token: String,
+    token: &str,
     db: DbConnection,
     mut cache: Connection<CacheConnection>,
 ) -> Result<Status, Custom<Value>> {
@@ -243,14 +312,15 @@ pub async fn change_password(
         ));
     }
 
-    let user_id = UserRepository::find_id_by_temporary_token(&token, &mut cache)
-        .map_err(|e: RedisError| match e.kind() {
-            ErrorKind::TypeError => {
-                Custom(Status::Unauthorized, json!(AuthError::InvalidToken.value()))
-            }
-            _ => server_error(e.into()),
-        })
-        .await?;
+    let user_id =
+        UserRepository::find_id_by_temporary_token(token, RESET_TOKEN_KEY_PREFIX, &mut cache)
+            .map_err(|e: RedisError| match e.kind() {
+                ErrorKind::TypeError => {
+                    Custom(Status::Unauthorized, json!(AuthError::InvalidToken.value()))
+                }
+                _ => server_error(e.into()),
+            })
+            .await?;
 
     let user = db
         .run(move |connection| UserRepository::find(connection, user_id))
@@ -270,9 +340,77 @@ pub async fn change_password(
         .map_err(|e| server_error(e.into()))
         .await;
 
-    SessionRepository::redeem_reset_token(&token, &mut cache)
+    SessionRepository::redeem_token(token, RESET_TOKEN_KEY_PREFIX, &mut cache)
         .map_err(|e| server_error(e.into()))
         .await?;
 
     Ok(Status::Ok)
+}
+
+/// Change user status to confirmed;
+///
+///Render the confirmation page and deep link (mobile version)
+#[utoipa::path(
+    get,
+    path = "/confirm/{token}",
+    params(("token" = String, Path, description = "The signup confirmation token",)),
+    responses(
+        (status = 200, description = "OK"),
+        (status = 400, description = "Bad Request", body = AuthError, examples(
+            ("InvalidToken" = (summary = "errors::AuthError::InvalidToken", value = json!(AuthError::InvalidToken.value()))),
+        ))
+    )
+)]
+#[rocket::get("/confirm/<token>")]
+pub async fn confirm_signup(
+    token: &str,
+    db: DbConnection,
+    mut cache: Connection<CacheConnection>,
+) -> Result<Template, Custom<Value>> {
+    if token.len() != SESSION_ID_LENGTH {
+        return Err(Custom(
+            Status::BadRequest,
+            json!(AuthError::InvalidToken.value()),
+        ));
+    }
+
+    let user_id =
+        UserRepository::find_id_by_temporary_token(token, CONFIRM_TOKEN_KEY_PREFIX, &mut cache)
+            .map_err(|e: RedisError| match e.kind() {
+                ErrorKind::TypeError => {
+                    Custom(Status::Unauthorized, json!(AuthError::InvalidToken.value()))
+                }
+                _ => server_error(e.into()),
+            })
+            .await?;
+
+    let user = db
+        .run(move |connection| UserRepository::find(connection, user_id))
+        .map_err(|e| match e {
+            diesel::result::Error::NotFound => Custom(
+                Status::Unauthorized,
+                json!((AuthError::InvalidToken.value())),
+            ),
+            _ => server_error(e.into()),
+        })
+        .await?;
+
+    if !user.confirmed {
+        let _ = db
+            .run(move |connection| UserRepository::confirm_signup(connection, user.id))
+            .map_err(|e| server_error(e.into()))
+            .await;
+    }
+
+    let deep_link = format!("{DEEP_LINK_SCHEME}://{DEEP_LINK_HOST}");
+    let base_url = std::env::var("BASE_URL").expect("Unable to read base URL from env");
+    let link = format!("{base_url}/{CONFIRM_EMAIL_PATH}");
+    let context = context! {
+     deep_link: &deep_link,
+     redirect_link: &link
+    };
+
+    let template = Template::render("page/confirmation", context);
+
+    Ok(template)
 }

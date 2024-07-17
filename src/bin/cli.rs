@@ -9,6 +9,7 @@ const CMD_DELETE: &str = "delete";
 const ARG_USERNAME: &str = "username";
 const ARG_EMAIL: &str = "email";
 const ARG_PASSWORD: &str = "password";
+const ARG_CONFIRMED: &str = "confirmed";
 const ARG_ROLES: &str = "roles";
 const ARG_ID: &str = "id";
 
@@ -32,7 +33,8 @@ fn main() {
                                 .required(true)
                                 .num_args(1..)
                                 .value_delimiter(','),
-                        ),
+                        )
+                        .arg(Arg::new(ARG_CONFIRMED).required(true)),
                 )
                 .subcommand(Command::new(CMD_LIST).about("List existing users"))
                 .subcommand(
@@ -63,6 +65,11 @@ fn main() {
                     .unwrap()
                     .map(|v| v.to_string())
                     .collect(),
+                sub_matches
+                    .get_one::<String>(ARG_CONFIRMED)
+                    .map(|v| v.parse::<bool>().unwrap())
+                    .unwrap()
+                    .to_owned(),
             ),
             Some((CMD_LIST, _)) => rust_template::commands::list_users(),
             Some((CMD_DELETE, sub_matches)) => rust_template::commands::delete_user(

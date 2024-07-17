@@ -8,7 +8,13 @@ use std::process::{Command, Output};
 
 pub const APP_HOST: &'static str = "http://127.0.0.1:8000";
 
-pub fn create_test_user(username: &str, email: &str, password: &str, role: &str) -> Output {
+pub fn create_test_user(
+    username: &str,
+    email: &str,
+    password: &str,
+    role: &str,
+    is_confirmed: &str,
+) -> Output {
     Command::new("cargo")
         .arg("run")
         .arg("--bin")
@@ -19,6 +25,7 @@ pub fn create_test_user(username: &str, email: &str, password: &str, role: &str)
         .arg(email)
         .arg(password)
         .arg(role)
+        .arg(is_confirmed)
         .output()
         .unwrap()
 }
@@ -46,9 +53,7 @@ pub fn delete_test_user(create_output: Output) {
 
 pub fn get_logged_in_client(username: &str, email: &str, role: &str) -> (Client, Output) {
     let password = "123456aA";
-    let output = create_test_user(username, email, password, role);
-
-    println!("{:?}", output);
+    let output = create_test_user(username, email, password, role, &true.to_string());
 
     let client = Client::new();
     let response = client

@@ -1,4 +1,4 @@
-use std::{io::Write, str::FromStr};
+use std::{fmt, io::Write, str::FromStr};
 
 use crate::schema::{roles, user_roles, users};
 use chrono::{NaiveDate, NaiveDateTime};
@@ -25,6 +25,7 @@ pub struct User {
     pub country: Option<String>,
     pub birth_date: Option<NaiveDate>,
     pub created_at: NaiveDateTime,
+    pub confirmed: bool,
 }
 
 #[derive(serde::Deserialize, Insertable)]
@@ -74,12 +75,12 @@ pub enum RoleCode {
     Viewer,
 }
 
-impl ToString for RoleCode {
-    fn to_string(&self) -> String {
+impl fmt::Display for RoleCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            RoleCode::Admin => String::from("admin"),
-            RoleCode::Editor => String::from("editor"),
-            RoleCode::Viewer => String::from("viewer"),
+            RoleCode::Admin => write!(f, "admin"),
+            RoleCode::Editor => write!(f, "editor"),
+            RoleCode::Viewer => write!(f, "viewer"),
         }
     }
 }

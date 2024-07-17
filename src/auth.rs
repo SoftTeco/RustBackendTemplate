@@ -10,8 +10,11 @@ pub const SESSION_LIFE_TIME: usize = 60 * 60 * 24;
 pub const SESSION_ID_LENGTH: usize = 128;
 pub const RESET_TOKEN_LIFE_TIME: usize = 60 * 60;
 pub const SESSIONS_KEY_PREFIX: &str = "sessions";
-pub const TOKEN_KEY_PREFIX: &str = "reset_token";
+pub const RESET_TOKEN_KEY_PREFIX: &str = "reset_token";
 pub const RESET_PASSWORD_PATH: &str = "reset_password";
+pub const CONFIRM_TOKEN_LIFE_TIME: usize = 60 * 60 * 24;
+pub const CONFIRM_TOKEN_KEY_PREFIX: &str = "confirm_token";
+pub const CONFIRM_EMAIL_PATH: &str = "confirm";
 const MIN_PASSWORD_LENGTH: usize = 6;
 const MIN_USERNAME_LENGTH: usize = 3;
 

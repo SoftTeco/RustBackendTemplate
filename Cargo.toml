@@ -27,3 +27,4 @@ reqwest = { version = "0.11.24", features = ["json", "blocking"] }
 utoipa = { version = "4.0", features = ["rocket_extras", "preserve_order"] }
 utoipa-swagger-ui = { version = "4.0", features = ["rocket"] }
 rustix = "0.38.20"
+rocket_dyn_templates = { version = "0.2.0", features = ["tera"] }
