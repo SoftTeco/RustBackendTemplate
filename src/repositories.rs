@@ -1,6 +1,4 @@
-use crate::auth::{
-    RESET_TOKEN_LIFE_TIME, SESSIONS_KEY_PREFIX, SESSION_LIFE_TIME, TOKEN_KEY_PREFIX,
-};
+use crate::auth::{SESSIONS_KEY_PREFIX, SESSION_LIFE_TIME};
 use crate::models::{NewRole, NewUser, NewUserRole, Role, RoleCode, User, UserRole};
 use crate::rocket_routes::CacheConnection;
 use crate::schema::{roles, user_roles, users};
@@ -73,19 +71,18 @@ impl UserRepository {
         Ok(users.into_iter().zip(roles_by_users).collect())
     }
 
-    pub fn find_by_email(connection: &mut PgConnection, email: &String) -> QueryResult<User> {
+    pub fn find_by_email(connection: &mut PgConnection, email: &str) -> QueryResult<User> {
         users::table
             .filter(users::email.eq(email))
             .first(connection)
     }
 
     pub async fn find_id_by_temporary_token(
-        token: &String,
+        token: &str,
+        prefix: &str,
         cache: &mut Connection<CacheConnection>,
     ) -> Result<i32, RedisError> {
-        cache
-            .get::<_, i32>(format!("{}/{}", TOKEN_KEY_PREFIX, token))
-            .await
+        cache.get::<_, i32>(format!("{}/{}", prefix, token)).await
     }
 
     pub fn update_password(
@@ -101,6 +98,12 @@ impl UserRepository {
     pub fn delete(connection: &mut PgConnection, id: i32) -> QueryResult<usize> {
         diesel::delete(user_roles::table.filter(user_roles::user_id.eq(id))).execute(connection)?;
         diesel::delete(users::table.find(id)).execute(connection)
+    }
+
+    pub fn confirm_signup(connection: &mut PgConnection, id: i32) -> QueryResult<User> {
+        diesel::update(users::table.find(id))
+            .set(users::confirmed.eq(true))
+            .get_result(connection)
     }
 }
 
@@ -147,26 +150,23 @@ impl SessionRepository {
             .await
     }
 
-    pub async fn cache_reset_token(
-        reset_token: &String,
+    pub async fn cache_token(
+        token: &str,
         user_id: i32,
+        prefix: &str,
+        lifetime: usize,
         mut cache: Connection<CacheConnection>,
     ) -> Result<(), RedisError> {
         cache
-            .set_ex::<_, _, ()>(
-                format!("{}/{}", TOKEN_KEY_PREFIX, reset_token),
-                user_id,
-                RESET_TOKEN_LIFE_TIME,
-            )
+            .set_ex::<_, _, ()>(format!("{}/{}", prefix, token), user_id, lifetime)
             .await
     }
 
-    pub async fn redeem_reset_token(
-        reset_token: &String,
+    pub async fn redeem_token(
+        token: &str,
+        prefix: &str,
         cache: &mut Connection<CacheConnection>,
     ) -> Result<(), RedisError> {
-        cache
-            .del(format!("{}/{}", TOKEN_KEY_PREFIX, reset_token))
-            .await
+        cache.del(format!("{}/{}", prefix, token)).await
     }
 }

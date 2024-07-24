@@ -38,5 +38,4 @@ jobs:
             docker rm $(docker stop $(docker ps -a -q --filter ancestor=${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPO }}:latest))
             docker image prune -a -f
             docker pull ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPO }}:latest
-            docker run -d -p 80:8000 --env-file .env ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPO }}
-
+            docker run -d -p 80:8000 --env-file .env --link redis:redis ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPO }}

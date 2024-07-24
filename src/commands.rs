@@ -13,7 +13,13 @@ fn load_db_connection() -> PgConnection {
     PgConnection::establish(&database_url).expect("Unable to connect to the database")
 }
 
-pub fn create_user(username: String, email: String, password: String, role_codes: Vec<String>) {
+pub fn create_user(
+    username: String,
+    email: String,
+    password: String,
+    role_codes: Vec<String>,
+    confirmed: bool,
+) {
     let mut connection = load_db_connection();
 
     let password_hash = auth::hash_password(password).unwrap();
@@ -30,6 +36,10 @@ pub fn create_user(username: String, email: String, password: String, role_codes
 
     let user = UserRepository::create(&mut connection, new_user, role_codes).unwrap();
     println!("User created: {:?}", user);
+
+    if confirmed {
+        let _ = UserRepository::confirm_signup(&mut connection, user.id);
+    }
 
     let roles = RoleRepository::find_by_user(&mut connection, &user).unwrap();
     for role in roles {

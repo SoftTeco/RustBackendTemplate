@@ -36,10 +36,15 @@ diesel::table! {
         country -> Nullable<Varchar>,
         birth_date -> Nullable<Date>,
         created_at -> Timestamp,
+        confirmed -> Bool,
     }
 }
 
 diesel::joinable!(user_roles -> roles (role_id));
 diesel::joinable!(user_roles -> users (user_id));
 
-diesel::allow_tables_to_appear_in_same_query!(roles, user_roles, users,);
+diesel::allow_tables_to_appear_in_same_query!(
+    roles,
+    user_roles,
+    users,
+);

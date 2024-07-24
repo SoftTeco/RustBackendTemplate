@@ -17,6 +17,7 @@ pub enum AuthError {
     UnavailableUsername,
     EmailInUse,
     EmailNotExist,
+    UnconfirmedUser,
 }
 
 impl AuthError {
@@ -46,12 +47,17 @@ impl AuthError {
             AuthError::InvalidToken => ApiError {
                 error_type: ERROR_TYPE.to_string(),
                 code: "invalid_token".to_string(),
-                message: "Invalid token".to_string(),
+                message: "Token is invalid or expired".to_string(),
             },
             AuthError::UnavailableUsername => ApiError {
                 error_type: ERROR_TYPE.to_string(),
                 code: "unavailable_username".to_string(),
                 message: "Unavailable username".to_string(),
+            },
+            AuthError::UnconfirmedUser => ApiError {
+                error_type: ERROR_TYPE.to_string(),
+                code: "unconfirmed_user".to_string(),
+                message: "User has not confirmed the registration via e-mail link".to_string(),
             },
             AuthError::EmailInUse => ApiError {
                 error_type: ERROR_TYPE.to_string(),

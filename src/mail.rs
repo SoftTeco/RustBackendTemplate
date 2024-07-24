@@ -92,3 +92,29 @@ pub async fn send_reset_password_email(user: User, deep_link: String, client_add
         )
         .unwrap();
 }
+
+pub async fn send_confirmation_email(user: &User, deep_link: String, client_addr: SocketAddr) {
+    let client_info = get_client_info(client_addr).await.unwrap();
+
+    let year = Utc::now().year();
+
+    log::info!("Sending confirmation email for {}", user.username);
+
+    let mut context = Context::new();
+    context.insert("username", &user.username);
+    context.insert("deep_link", &deep_link);
+    context.insert("client_info", &client_info);
+    context.insert("year", &year);
+
+    let mailer = HtmlMailer::new().unwrap();
+    let address = (user.email).to_string();
+
+    mailer
+        .send(
+            vec![address],
+            Some(String::from("Confirm Your Registration on Template App")),
+            "email/confirmation.html",
+            &context,
+        )
+        .unwrap();
+}

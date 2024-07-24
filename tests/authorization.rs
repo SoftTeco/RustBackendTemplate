@@ -24,9 +24,7 @@ fn when_credentials_correct_then_login_success() {
     let username = format!("testViewer{}", rand::random::<u32>());
     let email = format!("{}@gmail.com", username);
     let password = "1234";
-    let output = create_test_user(&username, &email, password, "viewer");
-
-    println!("1{:?}", output);
+    let output = create_test_user(&username, &email, password, "viewer", &true.to_string());
 
     let client = Client::new();
 
@@ -50,9 +48,7 @@ fn when_credentials_correct_then_login_returns_token() {
     let username = format!("testViewer{}", rand::random::<u32>());
     let email = format!("{}@gmail.com", username);
     let password = "1234";
-    let output = create_test_user(&username, &email, password, "viewer");
-
-    println!("2{:?}", output);
+    let output = create_test_user(&username, &email, password, "viewer", &true.to_string());
 
     let client = Client::new();
 
@@ -76,9 +72,7 @@ fn when_credentials_correct_then_login_returns_token() {
 fn when_password_is_wrong_then_login_failed() {
     let username = format!("testViewer{}", rand::random::<u32>());
     let email = format!("{}@gmail.com", username);
-    let output = create_test_user(&username, &email, "1234", "viewer");
-
-    println!("3{:?}", output);
+    let output = create_test_user(&username, &email, "1234", "viewer", &true.to_string());
 
     let client = Client::new();
 
@@ -102,9 +96,7 @@ fn when_email_is_wrong_then_login_failed() {
     let username = format!("testViewer{}", rand::random::<u32>());
     let email = format!("{}@gmail.com", username);
     let password = "1234";
-    let output = create_test_user(&username, &email, password, "viewer");
-
-    println!("4{:?}", output);
+    let output = create_test_user(&username, &email, password, "viewer", &true.to_string());
 
     let client = Client::new();
 
@@ -121,6 +113,33 @@ fn when_email_is_wrong_then_login_failed() {
     delete_test_user(output);
 
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[test]
+fn when_user_exist_and_unconfirmed_then_login_return_unconfirmed_error() {
+    let username = format!("testViewer{}", rand::random::<u32>());
+    let email = format!("{}@gmail.com", username);
+    let password = "1234";
+    let output = create_test_user(&username, &email, password, "viewer", &false.to_string());
+
+    let client = Client::new();
+
+    let response = client
+        .post(format!("{}/login", common::APP_HOST))
+        .json(&json!({
+            "email":email,
+            "password":password,
+        }))
+        .send()
+        .unwrap();
+
+    // Cleanup
+    delete_test_user(output);
+
+    let json: Value = response.json().unwrap();
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::UnconfirmedUser.value())
 }
 
 #[test]
@@ -173,9 +192,7 @@ fn when_user_exist_then_signup_failed() {
     let username = format!("testViewer{}", rand::random::<u32>());
     let email = format!("{}@gmail.com", username);
     let password = "123456aA";
-    let output = create_test_user(&username, &email, password, "viewer");
-
-    println!("5{:?}", output);
+    let output = create_test_user(&username, &email, password, "viewer", &true.to_string());
 
     let client = Client::new();
 
@@ -196,13 +213,39 @@ fn when_user_exist_then_signup_failed() {
 }
 
 #[test]
+fn when_user_exist_and_not_confirmed_then_returns_unconfirmed_user_error() {
+    let username = format!("testViewer{}", rand::random::<u32>());
+    let email = format!("{}@gmail.com", username);
+    let password = "123456aA";
+    let output = create_test_user(&username, &email, password, "viewer", &false.to_string());
+
+    let client = Client::new();
+
+    let response = client
+        .post(format!("{}/signup", common::APP_HOST))
+        .json(&json!({
+            "username":username,
+            "email": email,
+            "password":password
+        }))
+        .send()
+        .unwrap();
+
+    // Cleanup
+    delete_test_user(output);
+
+    let json: Value = response.json().unwrap();
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::UnconfirmedUser.value());
+}
+
+#[test]
 fn when_username_exist_then_signup_returns_username_unavailable_error() {
     let username = format!("testViewer{}", rand::random::<u32>());
     let email = format!("{}@gmail.com", username);
     let password = "123456aA";
-    let output = create_test_user(&username, &email, password, "viewer");
-
-    println!("6{:?}", output);
+    let output = create_test_user(&username, &email, password, "viewer", &true.to_string());
 
     let client = Client::new();
 
@@ -278,9 +321,7 @@ fn when_email_exist_then_signup_returns_email_in_use_error() {
     let username = format!("testViewer{}", rand::random::<u32>());
     let email = format!("{}@gmail.com", username);
     let password = "123456aA";
-    let output = create_test_user(&username, &email, password, "viewer");
-
-    println!("7{:?}", output);
+    let output = create_test_user(&username, &email, password, "viewer", &true.to_string());
 
     let client = Client::new();
 
@@ -404,9 +445,7 @@ fn when_email_correct_and_exists_password_reset_success() {
     let username = format!("testViewer{}", rand::random::<u32>());
     let email = format!("{}@gmail.com", username);
     let password = "123456aA";
-    let output = create_test_user(&username, &email, password, "viewer");
-
-    println!("8{:?}", output);
+    let output = create_test_user(&username, &email, password, "viewer", &true.to_string());
 
     let client = Client::new();
 
@@ -589,4 +628,20 @@ fn when_any_request_is_received_then_response_contains_cors_headers() {
         headers.get(ACCESS_CONTROL_ALLOW_CREDENTIALS).unwrap(),
         "true"
     );
+}
+
+#[test]
+fn when_confirmation_token_invalid_then_confirm_returns_invalid_token_error() {
+    let client = Client::new();
+    let token = generate_test_token(SESSION_ID_LENGTH);
+
+    let response = client
+        .get(format!("{}/confirm/{token}", common::APP_HOST))
+        .send()
+        .unwrap();
+
+    let json: Value = response.json().unwrap();
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::InvalidToken.value())
 }
