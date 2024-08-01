@@ -1,6 +1,6 @@
-use std::net::SocketAddr;
+use std::net::IpAddr;
 
-use super::{server_error, DbConnection, DEEP_LINK_HOST, DEEP_LINK_SCHEME};
+use super::{server_error, ClientAddr, DbConnection, DEEP_LINK_HOST, DEEP_LINK_SCHEME};
 use crate::{
     auth::{
         self, generate_token, is_email_valid, is_password_valid, validate_signup_credentials,
@@ -63,7 +63,7 @@ pub async fn signup(
     credentials: Json<NewUser>,
     db: DbConnection,
     cache: Connection<CacheConnection>,
-    client_addr: SocketAddr,
+    client_addr: ClientAddr,
 ) -> Result<Custom<Value>, Custom<Value>> {
     if let Err(e) = validate_signup_credentials(&credentials) {
         return Err(Custom(Status::BadRequest, json!(e.value())));
@@ -120,7 +120,7 @@ pub async fn signup(
     let base_url = std::env::var("BASE_URL").expect("Unable to read base URL from env");
     let link = format!("{base_url}/{CONFIRM_EMAIL_PATH}/{confirm_token}");
 
-    send_confirmation_email(&user, link, client_addr).await;
+    send_confirmation_email(&user, link, client_addr.0).await;
 
     Ok(Custom(
         Status::Created,
@@ -133,9 +133,7 @@ pub async fn signup(
 
 async fn check_existence(email: String, db: &DbConnection) -> Result<(), Custom<Value>> {
     let existing_user = db
-        .run(move |connection| {
-            UserRepository::find_by_email(connection, &email).map_err(|e| server_error(e.into()))
-        })
+        .run(move |connection| UserRepository::find_by_email(connection, &email).map_err(|_| ()))
         .await;
 
     if let Ok(user) = existing_user {
@@ -245,7 +243,7 @@ pub async fn reset_password(
     email_dto: Json<ResetPasswordEmailDto>,
     db: DbConnection,
     cache: Connection<CacheConnection>,
-    client_addr: SocketAddr,
+    client_addr: IpAddr,
 ) -> Result<Status, Custom<Value>> {
     if !is_email_valid(&email_dto.email) {
         return Err(Custom(
