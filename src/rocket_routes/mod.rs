@@ -1,7 +1,7 @@
 pub mod authorization;
 pub mod profile;
 
-use std::net::{Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
 use chrono::Utc;
@@ -28,6 +28,7 @@ pub const DEEP_LINK_SCHEME: &str = "https";
 const AUTH_TYPE: &str = "Bearer";
 const IP_GEOLOCATION_API_URI: &str = "https://freeipapi.com/api/json";
 const IP_GEOLOCATION_DURATION: u64 = 5;
+const VIEWER_ADDRESS_HEADER: &str = "cloudfront-viewer-address";
 
 #[rocket_sync_db_pools::database("postgres")]
 pub struct DbConnection(PgConnection);
@@ -36,9 +37,45 @@ pub struct DbConnection(PgConnection);
 #[database("redis")]
 pub struct CacheConnection(deadpool_redis::Pool);
 
+pub struct ClientAddr(IpAddr);
+
 pub fn server_error(e: Box<dyn std::error::Error>) -> Custom<Value> {
-    log::error!("{}", e);
+    log::error!("Internal Server Error: {}", e);
     Custom(Status::InternalServerError, json!("Internal Server Error"))
+}
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for ClientAddr {
+    type Error = Value;
+
+    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+        let header = request.headers().get_one(VIEWER_ADDRESS_HEADER);
+        match header {
+            Some(address) => match address.parse::<SocketAddr>() {
+                Ok(socket_addr) => Outcome::Success(ClientAddr(socket_addr.ip())),
+                Err(e) => Outcome::Error((
+                    Status::InternalServerError,
+                    json!(format!("Unable to extract client IP address: {}", e)),
+                )),
+            },
+            None => match request.headers().get_one(header::FORWARDED.as_str()) {
+                Some(address) => match address.parse::<IpAddr>() {
+                    Ok(ip) => Outcome::Success(ClientAddr(ip)),
+                    Err(e) => Outcome::Error((
+                        Status::InternalServerError,
+                        json!(format!("Unable to extract client IP address: {}", e)),
+                    )),
+                },
+                None => match request.client_ip() {
+                    Some(remote_addr) => Outcome::Success(ClientAddr(remote_addr)),
+                    None => Outcome::Error((
+                        Status::InternalServerError,
+                        json!("Unable to extract client IP address"),
+                    )),
+                },
+            },
+        }
+    }
 }
 
 #[rocket::async_trait]
@@ -81,16 +118,14 @@ impl<'r> FromRequest<'r> for User {
     }
 }
 
-pub async fn get_client_info(
-    client_addr: SocketAddr,
-) -> Result<String, Box<dyn std::error::Error>> {
+pub async fn get_client_info(client_addr: IpAddr) -> Result<String, Box<dyn std::error::Error>> {
     let date_time = Utc::now().format("%d %B %Y, %H:%M UTC").to_string();
 
-    if (client_addr.ip()) == Ipv4Addr::LOCALHOST {
-        return Ok(format!("{} at {}", client_addr.ip(), date_time));
+    if (client_addr) == Ipv4Addr::LOCALHOST {
+        return Ok(format!("{} at {}", client_addr, date_time));
     }
 
-    let get_location_url = format!("{}/{}", IP_GEOLOCATION_API_URI, client_addr.ip());
+    let get_location_url = format!("{}/{}", IP_GEOLOCATION_API_URI, client_addr);
 
     let timeout = Duration::new(IP_GEOLOCATION_DURATION, 0);
     let client = ClientBuilder::new().timeout(timeout).build()?;
@@ -103,10 +138,7 @@ pub async fn get_client_info(
 
     Ok(format!(
         "{}, {}, {} at {}",
-        client_addr.ip(),
-        city,
-        country,
-        date_time
+        client_addr, city, country, date_time
     ))
 }
 

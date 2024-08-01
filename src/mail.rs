@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::net::IpAddr;
 
 use chrono::{Datelike, Utc};
 use lettre::message::header::ContentType;
@@ -68,7 +68,7 @@ impl HtmlMailer {
     }
 }
 
-pub async fn send_reset_password_email(user: User, deep_link: String, client_addr: SocketAddr) {
+pub async fn send_reset_password_email(user: User, deep_link: String, client_addr: IpAddr) {
     let client_info = get_client_info(client_addr).await.unwrap();
 
     let year = Utc::now().year();
@@ -93,7 +93,7 @@ pub async fn send_reset_password_email(user: User, deep_link: String, client_add
         .unwrap();
 }
 
-pub async fn send_confirmation_email(user: &User, deep_link: String, client_addr: SocketAddr) {
+pub async fn send_confirmation_email(user: &User, deep_link: String, client_addr: IpAddr) {
     let client_info = get_client_info(client_addr).await.unwrap();
 
     let year = Utc::now().year();
