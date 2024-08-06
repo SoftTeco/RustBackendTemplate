@@ -1,4 +1,7 @@
-use super::{server_error, ClientAddr, DbConnection, DEEP_LINK_HOST, DEEP_LINK_SCHEME};
+use super::{
+    server_error, ClientAddr, DbConnection, DEEP_LINK_APP_SCHEME, DEEP_LINK_HOST,
+    DEEP_LINK_SCHEME,
+};
 use crate::{
     auth::{
         self, generate_token, is_email_valid, is_password_valid, validate_signup_credentials,
@@ -408,7 +411,7 @@ pub async fn confirm_signup(
             .await;
     }
 
-    let deep_link = format!("{DEEP_LINK_SCHEME}://{DEEP_LINK_HOST}");
+    let deep_link = format!("{DEEP_LINK_APP_SCHEME}://{DEEP_LINK_HOST}");
     let base_url = std::env::var("BASE_URL").expect("Unable to read base URL from env");
     let link = format!("{base_url}/{CONFIRM_EMAIL_PATH}");
     let context = context! {

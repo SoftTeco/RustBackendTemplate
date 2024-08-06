@@ -25,6 +25,7 @@ use crate::repositories::UserRepository;
 
 pub const DEEP_LINK_HOST: &str = "template.softteco.com.deep_link";
 pub const DEEP_LINK_SCHEME: &str = "https";
+pub const DEEP_LINK_APP_SCHEME: &str = "tmplt";
 const AUTH_TYPE: &str = "Bearer";
 const IP_GEOLOCATION_API_URI: &str = "https://freeipapi.com/api/json";
 const IP_GEOLOCATION_DURATION: u64 = 5;
