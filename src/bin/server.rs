@@ -29,6 +29,7 @@ async fn main() {
             authorization::confirm_signup,
             profile::me,
             profile::update_password,
+            profile::update_user,
         ),
         components(schemas(
             dto::UserProfileDto,
@@ -38,7 +39,9 @@ async fn main() {
             dto::NewUserDto,
             dto::NewUserResponseDto,
             dto::ResetPasswordEmailDto,
+            dto::UpdateUserDto,
             errors::AuthError,
+            errors::ProfileError,
         )),
         modifiers(&SecurityAddon),
     )]
@@ -70,6 +73,7 @@ async fn main() {
                 authorization::confirm_signup,
                 profile::me,
                 profile::update_password,
+                profile::update_user,
             ],
         )
         .mount(

@@ -72,3 +72,39 @@ impl AuthError {
         }
     }
 }
+
+#[derive(Debug, serde::Deserialize, PartialEq, ToSchema)]
+pub enum ProfileError {
+    InvalidFirstName,
+    InvalidLastName,
+    InvalidCountry,
+    InvalidBirthDate,
+}
+
+impl ProfileError {
+    pub fn value(&self) -> ApiError {
+        const ERROR_TYPE: &str = "profile_error";
+        match self {
+            ProfileError::InvalidFirstName => ApiError {
+                error_type: ERROR_TYPE.to_string(),
+                code: "invalid_first_name".to_string(),
+                message: "Invalid first name".to_string(),
+            },
+            ProfileError::InvalidLastName => ApiError {
+                error_type: ERROR_TYPE.to_string(),
+                code: "invalid_last_name".to_string(),
+                message: "Invalid last name".to_string(),
+            },
+            ProfileError::InvalidCountry => ApiError {
+                error_type: ERROR_TYPE.to_string(),
+                code: "invalid_country".to_string(),
+                message: "Invalid country".to_string(),
+            },
+            ProfileError::InvalidBirthDate => ApiError {
+                error_type: ERROR_TYPE.to_string(),
+                code: "invalid_birth_date".to_string(),
+                message: "Birth date must be in YYYY-MM-DD format".to_string(),
+            },
+        }
+    }
+}

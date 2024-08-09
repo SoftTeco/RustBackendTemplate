@@ -1,9 +1,12 @@
+use rocket::serde::json::Error;
 use rocket::serde::json::{serde_json::json, Json, Value};
 use rocket::{futures::TryFutureExt, http::Status, response::status::Custom};
 
+use crate::dto::{NewPasswordDto, UpdateUserDto};
+use crate::errors::ProfileError;
+use crate::models::UpdatedUserInfo;
 use crate::{
     auth::{self, is_password_valid},
-    dto::NewPasswordDto,
     errors::AuthError,
     models::User,
     repositories::UserRepository,
@@ -65,4 +68,75 @@ pub async fn update_password(
         .map_err(|e| server_error(e.into()))
         .map_ok(|_f| Status::Ok)
         .await
+}
+
+#[utoipa::path(
+    patch,
+    path = "/profile/user",
+    request_body = UpdateUserDto,
+    responses(
+        (status = 200, description = "OK", body = UserProfileDto),
+        (status = 401, description = "Unauthorized", body = AuthError, examples(
+            ("InvalidToken" = (summary = "errors::AuthError::InvalidToken", value = json!(AuthError::InvalidToken.value()))),
+        )),
+        (status = 400, description = "Bad Request", body = ProfileError, examples(
+            ("InvalidFirstName" = (summary = "errors::ProfileError::InvalidFirstName", value = json!(ProfileError::InvalidFirstName.value()))),
+            ("InvalidLastName" = (summary = "errors::ProfileError::InvalidLastName", value = json!(ProfileError::InvalidLastName.value()))),
+            ("InvalidCountry" = (summary = "errors::ProfileError::InvalidCountry", value = json!(ProfileError::InvalidCountry.value()))),
+            ("InvalidBirthDate" = (summary = "errors::ProfileError::InvalidBirthDate", value = json!(ProfileError::InvalidBirthDate.value()))),
+        )),
+    ),
+    security(("token"=[])),
+)]
+#[rocket::patch("/profile/user", format = "json", data = "<update_user_dto>")]
+pub async fn update_user(
+    update_user_dto: Result<Json<UpdateUserDto>, Error<'_>>,
+    db: DbConnection,
+    user: User,
+) -> Result<Custom<Value>, Custom<Value>> {
+    let err = |e: Box<ProfileError>| -> Result<Custom<Value>, Custom<Value>> {
+        Err(Custom(Status::BadRequest, json!(e.value())))
+    };
+
+    let is_value_invalid = |field_value: String| {
+        field_value
+            .trim()
+            .chars()
+            .any(|c| !(c.is_ascii_alphabetic() || c.is_ascii_whitespace()))
+    };
+
+    match update_user_dto {
+        Ok(update_user_dto) => {
+            if let Some(first_name) = update_user_dto.first_name.clone() {
+                if is_value_invalid(first_name) {
+                    return err(ProfileError::InvalidFirstName.into());
+                }
+            }
+
+            if let Some(last_name) = update_user_dto.last_name.clone() {
+                if is_value_invalid(last_name) {
+                    return err(ProfileError::InvalidLastName.into());
+                }
+            }
+
+            if let Some(country) = update_user_dto.country.clone() {
+                if is_value_invalid(country) {
+                    return err(ProfileError::InvalidCountry.into());
+                }
+            }
+
+            let info = UpdatedUserInfo {
+                first_name: update_user_dto.0.first_name.map(|v| v.trim().to_string()),
+                last_name: update_user_dto.0.last_name.map(|v| v.trim().to_string()),
+                country: update_user_dto.0.country.map(|v| v.trim().to_string()),
+                birth_date: update_user_dto.0.birth_date,
+            };
+
+            db.run(move |connection| UserRepository::update_user(connection, user.id, info))
+                .map_err(|e| server_error(e.into()))
+                .map_ok(|updated_user| Custom(Status::Ok, json!(updated_user)))
+                .await
+        }
+        Err(_) => err(ProfileError::InvalidBirthDate.into()),
+    }
 }

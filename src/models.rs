@@ -6,7 +6,7 @@ use diesel::{
     deserialize::{FromSql, FromSqlRow},
     expression::AsExpression,
     pg::{Pg, PgValue},
-    prelude::{Associations, Identifiable},
+    prelude::{AsChangeset, Associations, Identifiable},
     serialize::{IsNull, Output, ToSql},
     sql_types::Text,
     Insertable, Queryable,
@@ -25,6 +25,7 @@ pub struct User {
     pub country: Option<String>,
     pub birth_date: Option<NaiveDate>,
     pub created_at: NaiveDateTime,
+    #[serde(skip_serializing)]
     pub confirmed: bool,
 }
 
@@ -65,6 +66,15 @@ pub struct UserRole {
 pub struct NewUserRole {
     pub user_id: i32,
     pub role_id: i32,
+}
+
+#[derive(AsChangeset)]
+#[diesel(table_name=users)]
+pub struct UpdatedUserInfo {
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub country: Option<String>,
+    pub birth_date: Option<NaiveDate>,
 }
 
 #[derive(AsExpression, FromSqlRow, Debug)]
