@@ -69,6 +69,7 @@ pub struct NewUserRole {
 }
 
 #[derive(AsChangeset)]
+#[diesel(treat_none_as_null = true)]
 #[diesel(table_name=users)]
 pub struct UpdatedUserInfo {
     pub first_name: Option<String>,

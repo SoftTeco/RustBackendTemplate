@@ -622,7 +622,7 @@ fn when_any_request_is_received_then_response_contains_cors_headers() {
     assert_eq!(headers.get(ACCESS_CONTROL_ALLOW_HEADERS).unwrap(), "*");
     assert_eq!(
         headers.get(ACCESS_CONTROL_ALLOW_METHODS).unwrap(),
-        "GET, POST, PUT, DELETE"
+        "GET, POST, PUT, DELETE, PATCH"
     );
     assert_eq!(
         headers.get(ACCESS_CONTROL_ALLOW_CREDENTIALS).unwrap(),

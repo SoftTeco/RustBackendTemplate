@@ -92,17 +92,23 @@ pub async fn update_password(
 pub async fn update_user(
     update_user_dto: Result<Json<UpdateUserDto>, Error<'_>>,
     db: DbConnection,
-    user: User,
+    user: Result<User, Value>,
 ) -> Result<Custom<Value>, Custom<Value>> {
+    if let Err(value) = user {
+        return Err(Custom(Status::Unauthorized, value));
+    };
+
     let err = |e: Box<ProfileError>| -> Result<Custom<Value>, Custom<Value>> {
         Err(Custom(Status::BadRequest, json!(e.value())))
     };
 
     let is_value_invalid = |field_value: String| {
-        field_value
-            .trim()
-            .chars()
-            .any(|c| !(c.is_ascii_alphabetic() || c.is_ascii_whitespace()))
+        let trimmed_value = field_value.trim();
+
+        trimmed_value.is_empty()
+            || trimmed_value
+                .chars()
+                .any(|c| !(c.is_ascii_alphabetic() || c.is_ascii_whitespace()))
     };
 
     match update_user_dto {
@@ -132,10 +138,12 @@ pub async fn update_user(
                 birth_date: update_user_dto.0.birth_date,
             };
 
-            db.run(move |connection| UserRepository::update_user(connection, user.id, info))
-                .map_err(|e| server_error(e.into()))
-                .map_ok(|updated_user| Custom(Status::Ok, json!(updated_user)))
-                .await
+            db.run(move |connection| {
+                UserRepository::update_user(connection, user.unwrap().id, info)
+            })
+            .map_err(|e| server_error(e.into()))
+            .map_ok(|updated_user| Custom(Status::Ok, json!(updated_user)))
+            .await
         }
         Err(_) => err(ProfileError::InvalidBirthDate.into()),
     }
