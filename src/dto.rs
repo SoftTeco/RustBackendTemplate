@@ -82,3 +82,16 @@ pub struct UserProfileDto {
     #[schema(value_type=Vec<String>,example="2023-10-12T10:00:14.930859")]
     pub created_at: NaiveDateTime,
 }
+
+/// User profile update body
+#[derive(serde::Deserialize, ToSchema)]
+pub struct UpdateUserDto {
+    #[schema(example = "Edward")]
+    pub first_name: Option<String>,
+    #[schema(example = "Falcon")]
+    pub last_name: Option<String>,
+    #[schema(example = "Great Britain")]
+    pub country: Option<String>,
+    #[schema(value_type=Option<Vec<String>>,example="1970-01-01")]
+    pub birth_date: Option<NaiveDate>,
+}

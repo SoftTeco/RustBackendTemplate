@@ -1,5 +1,7 @@
 use crate::auth::{SESSIONS_KEY_PREFIX, SESSION_LIFE_TIME};
-use crate::models::{NewRole, NewUser, NewUserRole, Role, RoleCode, User, UserRole};
+use crate::models::{
+    NewRole, NewUser, NewUserRole, Role, RoleCode, UpdatedUserInfo, User, UserRole,
+};
 use crate::rocket_routes::CacheConnection;
 use crate::schema::{roles, user_roles, users};
 use diesel::{prelude::*, RunQueryDsl};
@@ -103,6 +105,16 @@ impl UserRepository {
     pub fn confirm_signup(connection: &mut PgConnection, id: i32) -> QueryResult<User> {
         diesel::update(users::table.find(id))
             .set(users::confirmed.eq(true))
+            .get_result(connection)
+    }
+
+    pub fn update_user(
+        connection: &mut PgConnection,
+        id: i32,
+        user_info: UpdatedUserInfo,
+    ) -> QueryResult<User> {
+        diesel::update(users::table.find(id))
+            .set(user_info)
             .get_result(connection)
     }
 }
