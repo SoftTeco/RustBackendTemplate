@@ -152,4 +152,6 @@ Contributions are welcome! If you find any issues or have suggestions for improv
 
 ## License
 
-RustBackendTemplate is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+Please note that this repository may include third-party libraries or components, which are licensed under their respective licenses. For more information, refer to the license files provided with those components.

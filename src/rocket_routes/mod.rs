@@ -119,6 +119,30 @@ impl<'r> FromRequest<'r> for User {
     }
 }
 
+// #[rocket::async_trait]
+// impl<'r> FromData<'r> for UpdateUserDto {
+//     type Error = Value;
+
+//     async fn from_data(req: &'r Request<'_>, data: Data<'r>) -> data::Outcome<'r, Self> {
+//         let string = match data
+//             .open(req.limits().get("birth_date").unwrap_or(256.bytes()))
+//             .into_string()
+//             .await
+//         {
+//             Ok(string) if string.is_complete() => string.into_inner(),
+//             _ => return Outcome::Error((Status::PayloadTooLarge, "Date too large")),
+//         };
+
+//         match NaiveDate::parse_from_str(&string, "%Y-%m-%d") {
+//             Ok(date) => Outcome::Success(date),
+//             Err(_) => Outcome::Error((
+//                 Status::UnprocessableEntity,
+//                 ProfileError::InvalidBirthDate.value(),
+//             )),
+//         }
+//     }
+// }
+
 pub async fn get_client_info(client_addr: IpAddr) -> Result<String, Box<dyn std::error::Error>> {
     let date_time = Utc::now().format("%d %B %Y, %H:%M UTC").to_string();
 
@@ -163,7 +187,10 @@ impl Fairing for Cors {
 
     async fn on_response<'r>(&self, _req: &'r Request<'_>, res: &mut rocket::Response<'r>) {
         res.set_raw_header("Access-Control-Allow-Origin", "*");
-        res.set_raw_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
+        res.set_raw_header(
+            "Access-Control-Allow-Methods",
+            "GET, POST, PUT, DELETE, PATCH",
+        );
         res.set_raw_header("Access-Control-Allow-Headers", "*");
         res.set_raw_header("Access-Control-Allow-Credentials", "true");
     }
