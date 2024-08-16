@@ -28,7 +28,7 @@ use super::server_error;
     security(("token"=[]))
 )]
 #[rocket::get("/profile/me")]
-pub fn me(user: Result<User, Value>) -> Result<Custom<Value>, Custom<Value>> {
+pub async fn me(user: Result<User, Value>) -> Result<Custom<Value>, Custom<Value>> {
     match user {
         Ok(user) => Ok(Custom(Status::Ok, json!(user))),
         Err(value) => Err(Custom(Status::Unauthorized, value)),
@@ -147,4 +147,31 @@ pub async fn update_user(
         }
         Err(_) => err(ProfileError::InvalidBirthDate.into()),
     }
+}
+
+/// Delete the current user's profile
+#[utoipa::path(
+    delete,
+    path = "/profile/user",
+    responses(
+        (status = 204),
+        (status = 401, description = "Unauthorized", body = AuthError, examples(
+            ("InvalidToken" = (summary = "errors::AuthError::InvalidToken", value = json!(AuthError::InvalidToken.value()))),
+        )),
+    ),
+    security(("token"=[]))
+)]
+#[rocket::delete("/profile/user")]
+pub async fn delete_user(
+    db: DbConnection,
+    user: Result<User, Value>,
+) -> Result<Status, Custom<Value>> {
+    if let Err(value) = user {
+        return Err(Custom(Status::Unauthorized, value));
+    };
+
+    db.run(move |connection| UserRepository::delete(connection, user.unwrap().id))
+        .map_err(|e| server_error(e.into()))
+        .map_ok(|_| Status::NoContent)
+        .await
 }

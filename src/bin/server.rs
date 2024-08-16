@@ -30,6 +30,7 @@ async fn main() {
             profile::me,
             profile::update_password,
             profile::update_user,
+            profile::delete_user,
         ),
         components(schemas(
             dto::UserProfileDto,
@@ -74,6 +75,7 @@ async fn main() {
                 profile::me,
                 profile::update_password,
                 profile::update_user,
+                profile::delete_user,
             ],
         )
         .mount(

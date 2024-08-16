@@ -456,3 +456,30 @@ fn when_session_is_not_active_then_update_user_returns_unauthorized_status() {
 
     assert_eq!(error, AuthError::InvalidToken.value());
 }
+
+#[test]
+fn when_session_is_active_then_delete_user_returns_no_content_status() {
+    let (client, _) = get_client_with_logged_in_editor();
+
+    let response = client
+        .delete(format!("{}/profile/user", common::APP_HOST))
+        .send()
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
+}
+
+#[test]
+fn when_token_wrong_or_expired_then_delete_user_returns_invalid_token_error() {
+    let client = Client::new();
+
+    let response = client
+        .delete(format!("{}/profile/user", common::APP_HOST))
+        .send()
+        .unwrap();
+
+    let json: Value = response.json().unwrap();
+    let error: ApiError = from_value(json).unwrap();
+
+    assert_eq!(error, AuthError::InvalidToken.value());
+}

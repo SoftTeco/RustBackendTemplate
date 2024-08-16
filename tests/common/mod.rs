@@ -7,6 +7,7 @@ use serde_json::{json, Value};
 use std::process::{Command, Output};
 
 pub const APP_HOST: &'static str = "http://127.0.0.1:8000";
+pub const SESSION_ID_LENGTH: usize = 128;
 
 pub fn create_test_user(
     username: &str,

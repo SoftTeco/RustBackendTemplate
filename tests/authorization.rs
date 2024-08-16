@@ -1,3 +1,4 @@
+use common::SESSION_ID_LENGTH;
 use reqwest::{
     blocking::Client,
     header::{
@@ -16,8 +17,6 @@ use serde_json::{from_value, json, Value};
 use crate::common::{create_test_user, delete_test_user, generate_test_token};
 
 pub mod common;
-
-const SESSION_ID_LENGTH: usize = 128;
 
 #[test]
 fn when_credentials_correct_then_login_success() {
