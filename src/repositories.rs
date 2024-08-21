@@ -98,7 +98,6 @@ impl UserRepository {
     }
 
     pub fn delete(connection: &mut PgConnection, id: i32) -> QueryResult<usize> {
-        diesel::delete(user_roles::table.filter(user_roles::user_id.eq(id))).execute(connection)?;
         diesel::delete(users::table.find(id)).execute(connection)
     }
 

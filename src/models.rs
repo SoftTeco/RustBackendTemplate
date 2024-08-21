@@ -27,6 +27,9 @@ pub struct User {
     pub created_at: NaiveDateTime,
     #[serde(skip_serializing)]
     pub confirmed: bool,
+    pub updated_at: NaiveDateTime,
+    #[serde(skip_serializing)]
+    pub user_type: UserType,
 }
 
 #[derive(serde::Deserialize, Insertable)]
@@ -126,6 +129,54 @@ impl ToSql<Text, Pg> for RoleCode {
             RoleCode::Admin => out.write_all(b"admin")?,
             RoleCode::Editor => out.write_all(b"editor")?,
             RoleCode::Viewer => out.write_all(b"viewer")?,
+        };
+        Ok(IsNull::No)
+    }
+}
+
+#[derive(AsExpression, FromSqlRow, Debug)]
+#[diesel(sql_type=Text)]
+pub enum UserType {
+    Regular,
+    Enterprise,
+}
+
+impl fmt::Display for UserType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            UserType::Regular => write!(f, "regular"),
+            UserType::Enterprise => write!(f, "enterprise"),
+        }
+    }
+}
+
+impl FromStr for UserType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "regular" => Ok(UserType::Regular),
+            "enterprise" => Ok(UserType::Enterprise),
+            _ => Err(()),
+        }
+    }
+}
+
+impl FromSql<Text, Pg> for UserType {
+    fn from_sql(value: PgValue) -> diesel::deserialize::Result<Self> {
+        match value.as_bytes() {
+            b"regular" => Ok(UserType::Regular),
+            b"enterprise" => Ok(UserType::Enterprise),
+            _ => Ok(UserType::Regular),
+        }
+    }
+}
+
+impl ToSql<Text, Pg> for UserType {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> diesel::serialize::Result {
+        match self {
+            UserType::Regular => out.write_all(b"regular")?,
+            UserType::Enterprise => out.write_all(b"enterprise")?,
         };
         Ok(IsNull::No)
     }
