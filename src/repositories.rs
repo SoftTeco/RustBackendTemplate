@@ -1,9 +1,10 @@
 use crate::auth::{SESSIONS_KEY_PREFIX, SESSION_LIFE_TIME};
 use crate::models::{
-    NewRole, NewUser, NewUserRole, Role, RoleCode, UpdatedUserInfo, User, UserRole,
+    Company, NewCompany, NewRole, NewUser, NewUserCompanyRoles, NewUserRole, Role, RoleCode,
+    UpdatedUserInfo, User, UserCompanyRoles, UserRole, UserType,
 };
 use crate::rocket_routes::CacheConnection;
-use crate::schema::{roles, user_roles, users};
+use crate::schema::{companies, roles, user_company_roles, user_roles, users};
 use diesel::{prelude::*, RunQueryDsl};
 use rocket_db_pools::deadpool_redis::redis::RedisError;
 use rocket_db_pools::{deadpool_redis::redis::AsyncCommands, Connection};
@@ -28,6 +29,7 @@ impl UserRepository {
                         role_id: role.id,
                     }
                 } else {
+                    // TODO: It is necessary to remove the possibility of creating new roles in this way
                     let name = role_code.to_string();
                     let new_role = NewRole {
                         name,
@@ -116,6 +118,16 @@ impl UserRepository {
             .set(user_info)
             .get_result(connection)
     }
+
+    pub fn set_user_type(
+        connection: &mut PgConnection,
+        id: i32,
+        user_type: &UserType,
+    ) -> QueryResult<User> {
+        diesel::update(users::table.find(id))
+            .set(users::user_type.eq(user_type))
+            .get_result(connection)
+    }
 }
 
 pub struct RoleRepository;
@@ -179,5 +191,52 @@ impl SessionRepository {
         cache: &mut Connection<CacheConnection>,
     ) -> Result<(), RedisError> {
         cache.del(format!("{}/{}", prefix, token)).await
+    }
+}
+
+pub struct CompanyRepository;
+
+impl CompanyRepository {
+    pub fn create(connection: &mut PgConnection, new_company: NewCompany) -> QueryResult<Company> {
+        diesel::insert_into(companies::table)
+            .values(new_company)
+            .get_result::<Company>(connection)
+    }
+
+    pub fn find_by_name(connection: &mut PgConnection, name: &str) -> QueryResult<Company> {
+        companies::table
+            .filter(companies::name.eq(name))
+            .first(connection)
+    }
+
+    pub fn list(connection: &mut PgConnection) -> QueryResult<Vec<Company>> {
+        let companies = companies::table.load(connection)?;
+        Ok(companies)
+    }
+
+    pub fn delete(connection: &mut PgConnection, id: i32) -> QueryResult<usize> {
+        diesel::delete(companies::table.find(id)).execute(connection)
+    }
+
+    pub fn add_user(
+        connection: &mut PgConnection,
+        company: &Company,
+        user: &User,
+        role_codes: &Vec<RoleCode>,
+    ) -> QueryResult<()> {
+        for role_code in role_codes {
+            if let Ok(role) = RoleRepository::find_by_code(connection, role_code) {
+                let relationship = NewUserCompanyRoles {
+                    user_id: user.id,
+                    company_id: company.id,
+                    role_id: role.id,
+                };
+
+                diesel::insert_into(user_company_roles::table)
+                    .values(relationship)
+                    .get_result::<UserCompanyRoles>(connection)?;
+            }
+        }
+        Ok(())
     }
 }

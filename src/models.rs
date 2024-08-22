@@ -1,6 +1,6 @@
 use std::{fmt, io::Write, str::FromStr};
 
-use crate::schema::{roles, user_roles, users};
+use crate::schema::{companies, roles, user_company_roles, user_roles, users};
 use chrono::{NaiveDate, NaiveDateTime};
 use diesel::{
     deserialize::{FromSql, FromSqlRow},
@@ -81,6 +81,48 @@ pub struct UpdatedUserInfo {
     pub birth_date: Option<NaiveDate>,
 }
 
+#[derive(Queryable, Debug, Identifiable, Serialize)]
+#[diesel(table_name = companies)]
+pub struct Company {
+    pub id: i32,
+    pub name: String,
+    pub email: Option<String>,
+    pub website: Option<String>,
+    pub address: Option<String>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(serde::Deserialize, Insertable)]
+#[diesel(table_name = companies)]
+pub struct NewCompany {
+    pub name: String,
+    pub email: Option<String>,
+    pub website: Option<String>,
+    pub address: Option<String>,
+}
+
+#[derive(Queryable, Associations, Identifiable, Debug)]
+#[diesel(table_name = user_company_roles)]
+#[diesel(belongs_to(User))]
+#[diesel(belongs_to(Company))]
+#[diesel(belongs_to(Role))]
+pub struct UserCompanyRoles {
+    pub id: i32,
+    pub user_id: i32,
+    pub company_id: i32,
+    pub role_id: i32,
+    pub created_at: Option<NaiveDateTime>,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name=user_company_roles)]
+pub struct NewUserCompanyRoles {
+    pub user_id: i32,
+    pub company_id: i32,
+    pub role_id: i32,
+}
+
 #[derive(AsExpression, FromSqlRow, Debug)]
 #[diesel(sql_type=Text)]
 pub enum RoleCode {
@@ -134,7 +176,7 @@ impl ToSql<Text, Pg> for RoleCode {
     }
 }
 
-#[derive(AsExpression, FromSqlRow, Debug)]
+#[derive(AsExpression, FromSqlRow, Debug, PartialEq)]
 #[diesel(sql_type=Text)]
 pub enum UserType {
     Regular,
