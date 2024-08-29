@@ -1,6 +1,6 @@
 use crate::auth::{SESSIONS_KEY_PREFIX, SESSION_LIFE_TIME};
 use crate::models::{
-    Company, NewCompany, NewRole, NewUser, NewUserCompanyRoles, NewUserRole, Role, RoleCode,
+    Company, NewCompany, NewRole, NewUser, NewUserCompanyRole, NewUserRole, Role, RoleCode,
     UpdatedUserInfo, User, UserCompanyRoles, UserRole, UserType,
 };
 use crate::rocket_routes::CacheConnection;
@@ -29,13 +29,7 @@ impl UserRepository {
                         role_id: role.id,
                     }
                 } else {
-                    // TODO: It is necessary to remove the possibility of creating new roles in this way
-                    let name = role_code.to_string();
-                    let new_role = NewRole {
-                        name,
-                        code: role_code,
-                    };
-                    let role = RoleRepository::create(connection, new_role)?;
+                    let role = RoleRepository::create_by_code(connection, &role_code)?;
                     NewUserRole {
                         user_id: user.id,
                         role_id: role.id,
@@ -89,6 +83,23 @@ impl UserRepository {
         cache.get::<_, i32>(format!("{}/{}", prefix, token)).await
     }
 
+    pub fn find_companies(
+        connection: &mut PgConnection,
+        user_id: i32,
+    ) -> QueryResult<Vec<Company>> {
+        let user_companies = user_company_roles::table
+            .filter(user_company_roles::user_id.eq(user_id))
+            .inner_join(companies::table)
+            .load::<(UserCompanyRoles, Company)>(connection)?;
+
+        let company_ids = user_companies
+            .iter()
+            .map(|record: &(UserCompanyRoles, Company)| record.1.id)
+            .collect();
+
+        CompanyRepository::find_by_ids(connection, company_ids)
+    }
+
     pub fn update_password(
         connection: &mut PgConnection,
         id: i32,
@@ -128,6 +139,82 @@ impl UserRepository {
             .set(users::user_type.eq(user_type))
             .get_result(connection)
     }
+
+    pub fn add_roles(
+        connection: &mut PgConnection,
+        user: &User,
+        role_codes: &[RoleCode],
+    ) -> QueryResult<()> {
+        let companies = CompanyRepository::find_by_user(connection, user)?;
+
+        for role_code in role_codes {
+            let new_user_role =
+                if let Ok(role) = RoleRepository::find_by_code(connection, role_code) {
+                    NewUserRole {
+                        user_id: user.id,
+                        role_id: role.id,
+                    }
+                } else {
+                    let role = RoleRepository::create_by_code(connection, role_code)?;
+                    NewUserRole {
+                        user_id: user.id,
+                        role_id: role.id,
+                    }
+                };
+
+            diesel::insert_into(user_roles::table)
+                .values(&new_user_role)
+                .on_conflict_do_nothing()
+                .execute(connection)?;
+
+            if user.user_type == UserType::Enterprise && !companies.is_empty() {
+                for company in &companies {
+                    let relationship = NewUserCompanyRole {
+                        user_id: user.id,
+                        company_id: company.id,
+                        role_id: new_user_role.role_id,
+                    };
+
+                    diesel::insert_into(user_company_roles::table)
+                        .values(relationship)
+                        .on_conflict_do_nothing()
+                        .execute(connection)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn remove_roles(
+        connection: &mut PgConnection,
+        user: &User,
+        role_codes: &[RoleCode],
+    ) -> QueryResult<()> {
+        let roles = RoleRepository::find_by_user(connection, user)?;
+
+        for role in roles {
+            if role_codes.contains(&role.code) {
+                let _ = diesel::delete(
+                    user_roles::table.filter(
+                        user_roles::user_id
+                            .eq(user.id)
+                            .and(user_roles::role_id.eq(role.id)),
+                    ),
+                )
+                .execute(connection);
+                let _ = diesel::delete(
+                    user_company_roles::table.filter(
+                        user_company_roles::user_id
+                            .eq(user.id)
+                            .and(user_company_roles::role_id.eq(role.id)),
+                    ),
+                )
+                .execute(connection);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 pub struct RoleRepository;
@@ -137,6 +224,15 @@ impl RoleRepository {
         diesel::insert_into(roles::table)
             .values(role)
             .get_result::<Role>(connection)
+    }
+
+    pub fn create_by_code(connection: &mut PgConnection, code: &RoleCode) -> QueryResult<Role> {
+        let name = code.to_string();
+        let new_role = NewRole {
+            name,
+            code: code.clone(),
+        };
+        Self::create(connection, new_role)
     }
 
     pub fn find_by_code(connection: &mut PgConnection, code: &RoleCode) -> QueryResult<Role> {
@@ -214,29 +310,71 @@ impl CompanyRepository {
         Ok(companies)
     }
 
+    pub fn find_by_ids(connection: &mut PgConnection, ids: Vec<i32>) -> QueryResult<Vec<Company>> {
+        companies::table
+            .filter(companies::id.eq_any(ids))
+            .get_results(connection)
+    }
+
     pub fn delete(connection: &mut PgConnection, id: i32) -> QueryResult<usize> {
         diesel::delete(companies::table.find(id)).execute(connection)
     }
 
     pub fn add_user(
         connection: &mut PgConnection,
-        company: &Company,
-        user: &User,
-        role_codes: &Vec<RoleCode>,
+        company: Company,
+        user: User,
+        role_codes: Vec<RoleCode>,
     ) -> QueryResult<()> {
-        for role_code in role_codes {
-            if let Ok(role) = RoleRepository::find_by_code(connection, role_code) {
-                let relationship = NewUserCompanyRoles {
-                    user_id: user.id,
-                    company_id: company.id,
-                    role_id: role.id,
-                };
+        let user_roles = RoleRepository::find_by_user(connection, &user)?;
 
-                diesel::insert_into(user_company_roles::table)
-                    .values(relationship)
-                    .get_result::<UserCompanyRoles>(connection)?;
-            }
+        let redundant_role_codes = user_roles
+            .iter()
+            .filter(|role| !role_codes.contains(&role.code))
+            .cloned()
+            .map(|r| r.code)
+            .collect::<Vec<RoleCode>>();
+
+        let _ = UserRepository::remove_roles(connection, &user, &redundant_role_codes);
+
+        for role_code in role_codes {
+            let relationship =
+                if let Ok(role) = RoleRepository::find_by_code(connection, &role_code) {
+                    NewUserCompanyRole {
+                        user_id: user.id,
+                        company_id: company.id,
+                        role_id: role.id,
+                    }
+                } else {
+                    let role = RoleRepository::create_by_code(connection, &role_code)?;
+
+                    let new_user_role = NewUserRole {
+                        user_id: user.id,
+                        role_id: role.id,
+                    };
+                    diesel::insert_into(user_roles::table)
+                        .values(new_user_role)
+                        .get_result::<UserRole>(connection)?;
+
+                    NewUserCompanyRole {
+                        user_id: user.id,
+                        company_id: company.id,
+                        role_id: role.id,
+                    }
+                };
+            diesel::insert_into(user_company_roles::table)
+                .values(relationship)
+                .execute(connection)?;
         }
         Ok(())
+    }
+
+    pub fn find_by_user(connection: &mut PgConnection, user: &User) -> QueryResult<Vec<Company>> {
+        let user_company_roles = UserCompanyRoles::belonging_to(&user).get_results(connection)?;
+        let company_ids = user_company_roles
+            .iter()
+            .map(|record: &UserCompanyRoles| record.company_id)
+            .collect();
+        Self::find_by_ids(connection, company_ids)
     }
 }

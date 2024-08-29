@@ -13,7 +13,7 @@ use diesel::{
 };
 use serde::Serialize;
 
-#[derive(Queryable, Debug, Identifiable, Serialize)]
+#[derive(Queryable, Debug, Identifiable, Serialize, Clone)]
 pub struct User {
     pub id: i32,
     pub username: String,
@@ -40,7 +40,7 @@ pub struct NewUser {
     pub password: String,
 }
 
-#[derive(Queryable, Debug)]
+#[derive(Queryable, Debug, PartialEq, Clone)]
 pub struct Role {
     pub id: i32,
     pub code: RoleCode,
@@ -81,7 +81,7 @@ pub struct UpdatedUserInfo {
     pub birth_date: Option<NaiveDate>,
 }
 
-#[derive(Queryable, Debug, Identifiable, Serialize)]
+#[derive(Queryable, Debug, Identifiable, Serialize, Clone)]
 #[diesel(table_name = companies)]
 pub struct Company {
     pub id: i32,
@@ -117,13 +117,13 @@ pub struct UserCompanyRoles {
 
 #[derive(Insertable)]
 #[diesel(table_name=user_company_roles)]
-pub struct NewUserCompanyRoles {
+pub struct NewUserCompanyRole {
     pub user_id: i32,
     pub company_id: i32,
     pub role_id: i32,
 }
 
-#[derive(AsExpression, FromSqlRow, Debug)]
+#[derive(AsExpression, FromSqlRow, Debug, PartialEq, Clone)]
 #[diesel(sql_type=Text)]
 pub enum RoleCode {
     Admin,
@@ -176,7 +176,7 @@ impl ToSql<Text, Pg> for RoleCode {
     }
 }
 
-#[derive(AsExpression, FromSqlRow, Debug, PartialEq)]
+#[derive(AsExpression, FromSqlRow, Debug, PartialEq, Clone)]
 #[diesel(sql_type=Text)]
 pub enum UserType {
     Regular,

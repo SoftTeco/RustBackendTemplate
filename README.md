@@ -29,32 +29,19 @@ RustBackendTemplate is a backend application that provides a set of APIs for an 
   - **Password management**: Change/restore password.
   - **Delete User**: Delete user accounts via CLI interface.
   - **List Users**: List all users via CLI interface.
-- **Profile Management**: Get user profile information.
+  - **Add|Remove roles**: managing user roles within the system or company via CLI interface.**
+  - **Set User Type**: User type management via CLI interface.
+- **Company Management**:
+  - **Create company**: Company creation via CLI interface.
+  - **Delete company**: Company deletion via CLI interface.
+  - **List companies**: Company listing via CLI interface.
+  - **Add user**: Add user to company via CLI interface.
 - **Error Handling and Logging**: Comprehensive error handling and logging throughout the application.
 - **Email Sending**: Functionality to send emails for various purposes.
 
 ## Command-Line Interface (CLI)
 
-The application includes a CLI interface for managing users. The CLI commands are executed via the following Docker command:
-
-```sh
-docker-compose exec app cargo run --bin cli
-```
-
-### Available Commands
-
-- **Create User**: 
-  ```sh
-  docker-compose exec app cargo run --bin cli users create
-  ```
-- **List Users**: 
-  ```sh
-  docker-compose exec app cargo run --bin cli users list
-  ```
-- **Delete User**: 
-  ```sh
-  docker-compose exec app cargo run --bin cli users delete
-  ```
+The application includes a **CLI** interface ([Documentation](doc/CLI.md)) to manage users and companies in the system. The CLI is executed using Cargo and offers various commands and subcommands to perform various tasks.
 
 ## Getting Started
 
