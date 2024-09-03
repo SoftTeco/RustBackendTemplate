@@ -13,7 +13,7 @@ pub fn create_test_user(
     username: &str,
     email: &str,
     password: &str,
-    role: &str,
+    roles: &str,
     is_confirmed: &str,
 ) -> Output {
     Command::new("cargo")
@@ -22,11 +22,16 @@ pub fn create_test_user(
         .arg("cli")
         .arg("users")
         .arg("create")
+        .arg("-u")
         .arg(username)
+        .arg("-e")
         .arg(email)
+        .arg("-p")
         .arg(password)
-        .arg(role)
+        .arg("-c")
         .arg(is_confirmed)
+        .arg("-r")
+        .arg(roles)
         .output()
         .unwrap()
 }

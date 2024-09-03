@@ -81,6 +81,8 @@ pub struct UserProfileDto {
     pub birth_date: Option<NaiveDate>,
     #[schema(value_type=Vec<String>,example="2023-10-12T10:00:14.930859")]
     pub created_at: NaiveDateTime,
+    #[schema(value_type=Vec<String>,example="2024-08-21T13:35:16.389450")]
+    pub updated_at: NaiveDateTime,
 }
 
 /// User profile update body
