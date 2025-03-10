@@ -61,12 +61,12 @@ pub fn is_username_valid(username: &str) -> bool {
 
 pub fn is_password_valid(password: &str) -> bool {
     password.len() >= MIN_PASSWORD_LENGTH
-        && password.chars().all(|c| c.is_ascii())
+        && password.is_ascii()
         && password.chars().any(|c| c.is_ascii_uppercase())
 }
 
 pub fn is_email_valid(email: &str) -> bool {
-    if email.chars().any(|c| !c.is_ascii()) {
+    if !email.is_ascii() {
         return false;
     }
     let parts: Vec<&str> = email.split('@').collect();
