@@ -76,9 +76,4 @@ diesel::joinable!(user_roles -> roles (role_id));
 diesel::joinable!(user_roles -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    companies,
-    roles,
-    user_company_roles,
-    user_roles,
-    users,
-);
+    companies,roles,user_company_roles,user_roles,users,);

@@ -62,7 +62,7 @@ impl UserRepository {
             .map(|user_roles: Vec<(UserRole, Role)>| {
                 user_roles
                     .into_iter()
-                    .map(|(_user_role, role)| (role))
+                    .map(|(_user_role, role)| role)
                     .collect::<Vec<Role>>()
             });
 

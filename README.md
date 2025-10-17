@@ -63,7 +63,11 @@ To get started with RustBackendTemplate, follow these steps:
    ```sh
    docker-compose up -d
    ```
-5. **Run the application inside the Docker container**:
+5. **Apply database migrations**:
+   ```sh
+   docker-compose exec app diesel migration run
+   ```
+6. **Run the application inside the Docker container**:
    ```sh
    docker-compose exec app cargo run
    ```
